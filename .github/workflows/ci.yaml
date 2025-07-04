@@ -74,7 +74,7 @@ jobs:
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Check web build
-        run: cargo check --target wasm32-unknown-unknown --release
+        run: cargo check --target wasm32-unknown-unknown --release --no-default-features
 
   build-web:
     name: Build Web
