@@ -122,23 +122,6 @@ cargo run
 - **Release**: 支持多平台构建（Windows、Linux、macOS、Web）
 - **itch.io集成**: 可自动发布到itch.io平台
 
-## 开发依赖
-
-### 桌面开发
-```bash
-# Ubuntu/Debian
-sudo apt-get install libasound2-dev libudev-dev
-
-# 安装Rust工具链
-rustup target add wasm32-unknown-unknown
-```
-
-### Web开发额外依赖
-```bash
-cargo install wasm-bindgen-cli
-cargo install basic-http-server  # 用于本地测试
-```
-
 ---
 
 这个项目展示了如何将传统游戏AI算法与现代Rust游戏引擎完美结合，支持桌面和Web双平台部署，创造出高性能、可扩展的游戏应用。
