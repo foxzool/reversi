@@ -1,8 +1,8 @@
-use std::time::Duration;
+use super::minimax::find_best_move_with_time_limit;
+use crate::game::{Board, Move, PlayerColor};
 use bevy::prelude::*;
 use rand::Rng;
-use crate::game::{Board, PlayerColor, Move};
-use super::minimax::find_best_move_with_time_limit;
+use std::time::Duration;
 
 #[derive(Component, Debug, Clone, Copy)]
 pub enum AiDifficulty {
@@ -52,9 +52,12 @@ impl AiDifficulty {
 
     pub fn get_ai_move(&self, board: &Board, player: PlayerColor) -> Option<Move> {
         let params = self.get_search_params();
-        let result = find_best_move_with_time_limit(board, params.time_limit, params.max_depth, player);
+        let result =
+            find_best_move_with_time_limit(board, params.time_limit, params.max_depth, player);
 
-        if params.mistake_probability > 0.0 && rand::thread_rng().gen::<f32>() < params.mistake_probability {
+        if params.mistake_probability > 0.0
+            && rand::thread_rng().gen::<f32>() < params.mistake_probability
+        {
             self.make_random_mistake(board, player)
         } else {
             result.best_move

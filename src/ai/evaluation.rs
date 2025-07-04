@@ -1,14 +1,9 @@
 use crate::game::{Board, PlayerColor};
 
 const POSITION_WEIGHTS: [i32; 64] = [
-    100, -20,  10,   5,   5,  10, -20, 100,
-    -20, -50,  -2,  -2,  -2,  -2, -50, -20,
-     10,  -2,  -1,  -1,  -1,  -1,  -2,  10,
-      5,  -2,  -1,  -1,  -1,  -1,  -2,   5,
-      5,  -2,  -1,  -1,  -1,  -1,  -2,   5,
-     10,  -2,  -1,  -1,  -1,  -1,  -2,  10,
-    -20, -50,  -2,  -2,  -2,  -2, -50, -20,
-    100, -20,  10,   5,   5,  10, -20, 100,
+    100, -20, 10, 5, 5, 10, -20, 100, -20, -50, -2, -2, -2, -2, -50, -20, 10, -2, -1, -1, -1, -1,
+    -2, 10, 5, -2, -1, -1, -1, -1, -2, 5, 5, -2, -1, -1, -1, -1, -2, 5, 10, -2, -1, -1, -1, -1, -2,
+    10, -20, -50, -2, -2, -2, -2, -50, -20, 100, -20, 10, 5, 5, 10, -20, 100,
 ];
 
 pub struct EvaluationWeights {
@@ -48,7 +43,8 @@ impl EvaluationWeights {
 }
 
 pub fn evaluate_board(board: &Board, player: PlayerColor) -> i32 {
-    let move_count = board.count_pieces(PlayerColor::Black) + board.count_pieces(PlayerColor::White);
+    let move_count =
+        board.count_pieces(PlayerColor::Black) + board.count_pieces(PlayerColor::White);
     let weights = EvaluationWeights::for_stage(move_count);
 
     let corner_score = evaluate_corners(board, player) as f32;
@@ -93,10 +89,9 @@ pub fn evaluate_stability(board: &Board, player: PlayerColor) -> i32 {
     let mut stable_count = 0;
 
     for position in 0..64 {
-        if player_pieces & (1u64 << position) != 0
-            && is_stable_piece(board, position) {
-                stable_count += 1;
-            }
+        if player_pieces & (1u64 << position) != 0 && is_stable_piece(board, position) {
+            stable_count += 1;
+        }
     }
 
     stable_count * 50
@@ -136,7 +131,7 @@ pub fn evaluate_positional(board: &Board, player: PlayerColor) -> i32 {
 
 pub fn evaluate_parity(board: &Board, _player: PlayerColor) -> i32 {
     let empty_squares = board.get_empty_squares().count_ones();
-    
+
     if empty_squares % 2 == 1 {
         10
     } else {

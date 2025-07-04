@@ -1,10 +1,9 @@
-use std::time::{Duration, Instant};
-use crate::game::{Board, PlayerColor, Move};
 use super::evaluation::evaluate_board;
+use crate::game::{Board, Move, PlayerColor};
 use rayon::prelude::*;
+use std::time::{Duration, Instant};
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct SearchResult {
     pub best_move: Option<Move>,
     pub evaluation: i32,
@@ -12,7 +11,6 @@ pub struct SearchResult {
     pub nodes_evaluated: u64,
     pub completed: bool,
 }
-
 
 pub fn minimax(
     board: &Board,
@@ -26,7 +24,11 @@ pub fn minimax(
         return evaluate_board(board, player);
     }
 
-    let current_player = if maximizing { player } else { player.opposite() };
+    let current_player = if maximizing {
+        player
+    } else {
+        player.opposite()
+    };
     let moves = board.get_valid_moves_list(current_player);
 
     if moves.is_empty() {
@@ -68,7 +70,7 @@ pub fn minimax(
 
 pub fn find_best_move(board: &Board, depth: u8, player: PlayerColor) -> SearchResult {
     let moves = board.get_valid_moves_list(player);
-    
+
     if moves.is_empty() {
         return SearchResult::default();
     }
@@ -113,7 +115,7 @@ pub fn find_best_move_with_time_limit(
         }
 
         let result = find_best_move(board, depth, player);
-        
+
         if start_time.elapsed() < time_limit {
             best_result = result;
         } else {

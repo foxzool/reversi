@@ -1,7 +1,9 @@
-use bevy::prelude::*;
-use crate::game::{Board, PlayerColor};
-use crate::ai::{AiPlayer, AiDifficulty};
 use super::CurrentPlayer;
+use crate::{
+    ai::{AiDifficulty, AiPlayer},
+    game::{Board, PlayerColor},
+};
+use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct ScoreText;
@@ -28,142 +30,144 @@ pub struct TurnIndicator;
 #[derive(Component)]
 pub struct DifficultyText;
 
-pub fn setup_game_ui(
-    mut commands: Commands,
-) {
+pub fn setup_game_ui(mut commands: Commands) {
     // 创建根UI容器
-    commands.spawn((
-        Node {
+    commands
+        .spawn((Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
             justify_content: JustifyContent::SpaceBetween,
             align_items: AlignItems::Center,
             ..default()
-        },
-    )).with_children(|parent| {
-        // 顶部区域 - Bill
-        parent.spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Px(100.0),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-        )).with_children(|top_parent| {
-            // Bill头像
-            top_parent.spawn((
-                Node {
-                    width: Val::Px(50.0),
-                    height: Val::Px(50.0),
-                    border: UiRect::all(Val::Px(2.0)),
-                    margin: UiRect::bottom(Val::Px(8.0)),
+        },))
+        .with_children(|parent| {
+            // 顶部区域 - Bill
+            parent
+                .spawn((Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(100.0),
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..default()
-                },
-                BorderRadius::all(Val::Px(25.0)),
-                BackgroundColor(Color::srgb(0.7, 0.7, 0.7)),
-                BorderColor(Color::WHITE),
-                PlayerAvatar { player_color: PlayerColor::White },
-            ));
-            
-            // Bill名称
-            top_parent.spawn((
-                Text::new("Bill"),
-                TextFont {
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-                PlayerNameText { player_color: PlayerColor::White },
-            ));
-        });
+                },))
+                .with_children(|top_parent| {
+                    // Bill头像
+                    top_parent.spawn((
+                        Node {
+                            width: Val::Px(50.0),
+                            height: Val::Px(50.0),
+                            border: UiRect::all(Val::Px(2.0)),
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        },
+                        BorderRadius::all(Val::Px(25.0)),
+                        BackgroundColor(Color::srgb(0.7, 0.7, 0.7)),
+                        BorderColor(Color::WHITE),
+                        PlayerAvatar {
+                            player_color: PlayerColor::White,
+                        },
+                    ));
 
-        // 中间区域保留给棋盘
-        parent.spawn((
-            Node {
+                    // Bill名称
+                    top_parent.spawn((
+                        Text::new("Bill"),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        PlayerNameText {
+                            player_color: PlayerColor::White,
+                        },
+                    ));
+                });
+
+            // 中间区域保留给棋盘
+            parent.spawn((Node {
                 width: Val::Percent(100.0),
                 flex_grow: 1.0,
                 ..default()
-            },
-        ));
+            },));
 
-        // 底部区域 - You
-        parent.spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Px(100.0),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-        )).with_children(|bottom_parent| {
-            // Your turn文本
-            bottom_parent.spawn((
-                Text::new("Your turn."),
-                TextFont {
-                    font_size: 18.0,
+            // 底部区域 - You
+            parent
+                .spawn((Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(100.0),
+                    flex_direction: FlexDirection::Column,
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
                     ..default()
-                },
-                TextColor(Color::WHITE),
-                Node {
-                    margin: UiRect::bottom(Val::Px(8.0)),
-                    ..default()
-                },
-                TurnIndicator,
-            ));
-            
-            // You头像
-            bottom_parent.spawn((
-                Node {
-                    width: Val::Px(50.0),
-                    height: Val::Px(50.0),
-                    border: UiRect::all(Val::Px(2.0)),
-                    ..default()
-                },
-                BorderRadius::all(Val::Px(25.0)),
-                BackgroundColor(Color::srgb(0.9, 0.7, 0.5)),
-                BorderColor(Color::WHITE),
-                PlayerAvatar { player_color: PlayerColor::Black },
-            ));
+                },))
+                .with_children(|bottom_parent| {
+                    // Your turn文本
+                    bottom_parent.spawn((
+                        Text::new("Your turn."),
+                        TextFont {
+                            font_size: 18.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        Node {
+                            margin: UiRect::bottom(Val::Px(8.0)),
+                            ..default()
+                        },
+                        TurnIndicator,
+                    ));
+
+                    // You头像
+                    bottom_parent.spawn((
+                        Node {
+                            width: Val::Px(50.0),
+                            height: Val::Px(50.0),
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderRadius::all(Val::Px(25.0)),
+                        BackgroundColor(Color::srgb(0.9, 0.7, 0.5)),
+                        BorderColor(Color::WHITE),
+                        PlayerAvatar {
+                            player_color: PlayerColor::Black,
+                        },
+                    ));
+                });
         });
-    });
 
     // 侧边信息面板
-    commands.spawn((
-        Node {
+    commands
+        .spawn((Node {
             position_type: PositionType::Absolute,
             left: Val::Px(10.0),
             top: Val::Px(10.0),
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(10.0),
             ..default()
-        },
-    )).with_children(|parent| {
-        // 分数显示
-        parent.spawn((
-            Text::new("Black: 2  White: 2"),
-            TextFont {
-                font_size: 16.0,
-                ..default()
-            },
-            TextColor(Color::WHITE),
-            ScoreText,
-        ));
+        },))
+        .with_children(|parent| {
+            // 分数显示
+            parent.spawn((
+                Text::new("Black: 2  White: 2"),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                ScoreText,
+            ));
 
-        // AI难度显示
-        parent.spawn((
-            Text::new("AI Difficulty: Intermediate (Press 1-4 to change)"),
-            TextFont {
-                font_size: 14.0,
-                ..default()
-            },
-            TextColor(Color::WHITE),
-            DifficultyText,
-        ));
-    });
+            // AI难度显示
+            parent.spawn((
+                Text::new("AI Difficulty: Intermediate (Press 1-4 to change)"),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                DifficultyText,
+            ));
+        });
 
     // 底部状态信息
     commands.spawn((
@@ -213,9 +217,9 @@ pub fn update_game_status_text(
     if let (Ok(mut text), Ok(board)) = (status_query.single_mut(), board_query.single()) {
         if board.is_game_over() {
             if let Some(winner) = board.get_winner() {
-                **text = format!("{winner:?} wins!");
+                **text = format!("{winner:?} wins! Press SPACE or ENTER to restart");
             } else {
-                **text = "Draw!".to_string();
+                **text = "Draw! Press SPACE or ENTER to restart".to_string();
             }
         } else if !board.has_valid_moves(current_player.0) {
             **text = format!("{:?} has no valid moves. Pass turn.", current_player.0);
@@ -247,7 +251,7 @@ pub fn update_difficulty_text(
         if let Ok(mut text) = difficulty_query.single_mut() {
             let difficulty_name = match ai_player.difficulty {
                 AiDifficulty::Beginner => "Beginner",
-                AiDifficulty::Intermediate => "Intermediate", 
+                AiDifficulty::Intermediate => "Intermediate",
                 AiDifficulty::Advanced => "Advanced",
                 AiDifficulty::Expert => "Expert",
             };

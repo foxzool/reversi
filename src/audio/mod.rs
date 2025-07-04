@@ -38,10 +38,7 @@ pub enum SoundType {
     InvalidMove,
 }
 
-pub fn load_audio_assets(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
+pub fn load_audio_assets(mut commands: Commands, asset_server: Res<AssetServer>) {
     let audio_assets = AudioAssets {
         piece_place: asset_server.load("sounds/piece_place.ogg"),
         piece_flip: asset_server.load("sounds/piece_flip.ogg"),
@@ -49,7 +46,7 @@ pub fn load_audio_assets(
         defeat: asset_server.load("sounds/defeat.ogg"),
         invalid_move: asset_server.load("sounds/invalid_move.ogg"),
     };
-    
+
     commands.insert_resource(audio_assets);
 }
 
@@ -83,7 +80,11 @@ pub fn toggle_audio_system(
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyM) {
         audio_settings.enabled = !audio_settings.enabled;
-        let status = if audio_settings.enabled { "开启" } else { "关闭" };
+        let status = if audio_settings.enabled {
+            "开启"
+        } else {
+            "关闭"
+        };
         println!("音效已{}", status);
     }
 }

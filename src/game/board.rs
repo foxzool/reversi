@@ -68,7 +68,8 @@ impl Board {
     }
 
     pub fn is_game_over(&self) -> bool {
-        self.get_valid_moves(PlayerColor::Black) == 0 && self.get_valid_moves(PlayerColor::White) == 0
+        self.get_valid_moves(PlayerColor::Black) == 0
+            && self.get_valid_moves(PlayerColor::White) == 0
     }
 
     pub fn get_winner(&self) -> Option<PlayerColor> {

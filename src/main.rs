@@ -1,20 +1,19 @@
-mod game;
 mod ai;
-mod ui;
 mod audio;
+mod game;
+mod ui;
 
-use bevy::prelude::*;
-use game::{Board, PlayerColor, Move};
-use ai::{AiPlayer, AiDifficulty};
-use ui::{
-    BoardColors, CurrentPlayer,
-    setup_board_ui, update_pieces, update_valid_moves,
-    setup_game_ui, update_score_text, update_current_player_text, update_game_status_text,
-    update_turn_indicator, update_difficulty_text, SQUARE_SIZE
-};
+use ai::{AiDifficulty, AiPlayer};
 use audio::{
-    AudioSettings, PlaySoundEvent, SoundType,
-    load_audio_assets, play_sound_system, toggle_audio_system
+    load_audio_assets, play_sound_system, toggle_audio_system, AudioSettings, PlaySoundEvent,
+    SoundType,
+};
+use bevy::prelude::*;
+use game::{Board, Move, PlayerColor};
+use ui::{
+    setup_board_ui, setup_game_ui, update_current_player_text, update_difficulty_text,
+    update_game_status_text, update_pieces, update_score_text, update_turn_indicator,
+    update_valid_moves, BoardColors, CurrentPlayer, SQUARE_SIZE,
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -34,6 +33,9 @@ pub struct AiMoveEvent {
     pub ai_move: Move,
 }
 
+#[derive(Event)]
+pub struct RestartGameEvent;
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -48,11 +50,15 @@ fn main() {
         .add_event::<PlayerMoveEvent>()
         .add_event::<AiMoveEvent>()
         .add_event::<PlaySoundEvent>()
+        .add_event::<RestartGameEvent>()
         .init_resource::<BoardColors>()
         .init_resource::<AudioSettings>()
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
-        .add_systems(Startup, (setup_board_ui, setup_game_ui, setup_game, load_audio_assets))
+        .add_systems(
+            Startup,
+            (setup_board_ui, setup_game_ui, setup_game, load_audio_assets),
+        )
         .add_systems(
             Update,
             (
@@ -68,22 +74,28 @@ fn main() {
                 update_turn_indicator,
                 update_difficulty_text,
                 check_game_over,
-            ).run_if(in_state(GameState::Playing))
+            )
+                .run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
             (
                 play_sound_system,
                 toggle_audio_system,
-            )
+                handle_game_over_input.run_if(in_state(GameState::GameOver)),
+                restart_game,
+            ),
         )
         .run();
 }
 
 fn setup_game(mut commands: Commands) {
     commands.spawn(Board::new());
-    
-    commands.spawn(AiPlayer::new(AiDifficulty::Intermediate, PlayerColor::White));
+
+    commands.spawn(AiPlayer::new(
+        AiDifficulty::Intermediate,
+        PlayerColor::White,
+    ));
 }
 
 fn handle_input(
@@ -122,8 +134,12 @@ fn handle_input(
         }
     }
 
-    let Ok(window) = windows.single() else { return; };
-    let Ok((camera, camera_transform)) = camera_query.single() else { return; };
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
 
     if let Some(cursor_position) = window.cursor_position() {
         if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
@@ -148,17 +164,17 @@ fn handle_player_move(
         if let Ok(mut board) = board_query.single_mut() {
             if board.is_valid_move(event.position, current_player.0) {
                 board.make_move(event.position, current_player.0);
-                
+
                 // 播放落子音效
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::PiecePlace,
                 });
-                
+
                 // 播放翻转音效
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::PieceFlip,
                 });
-                
+
                 let next_player = current_player.0.opposite();
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
@@ -213,12 +229,12 @@ fn handle_ai_move(
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::PiecePlace,
                 });
-                
+
                 // 播放翻转音效
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::PieceFlip,
                 });
-                
+
                 let next_player = current_player.0.opposite();
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
@@ -241,11 +257,11 @@ fn check_game_over(
     if current_state.get() != &GameState::Playing {
         return;
     }
-    
+
     if let Ok(board) = board_query.single() {
         if board.is_game_over() {
             println!("检测到游戏结束！");
-            
+
             // 播放游戏结束音效
             if let Some(winner) = board.get_winner() {
                 // 如果有AI玩家，判断是玩家胜利还是AI胜利
@@ -284,8 +300,46 @@ fn check_game_over(
                     sound_type: SoundType::Victory,
                 });
             }
-            
+
             next_state.set(GameState::GameOver);
         }
+    }
+}
+
+fn handle_game_over_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut restart_events: EventWriter<RestartGameEvent>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) || keyboard_input.just_pressed(KeyCode::Enter) {
+        println!("重新开始游戏");
+        restart_events.write(RestartGameEvent);
+    }
+}
+
+fn restart_game(
+    mut restart_events: EventReader<RestartGameEvent>,
+    mut board_query: Query<&mut Board>,
+    mut current_player: ResMut<CurrentPlayer>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut ai_query: Query<&mut AiPlayer>,
+) {
+    for _event in restart_events.read() {
+        println!("执行游戏重新开始");
+        
+        // 重置棋盘
+        if let Ok(mut board) = board_query.single_mut() {
+            *board = Board::new();
+        }
+        
+        // 重置当前玩家为黑棋
+        current_player.0 = PlayerColor::Black;
+        
+        // 重置AI思考计时器
+        if let Ok(mut ai_player) = ai_query.single_mut() {
+            ai_player.thinking_timer.reset();
+        }
+        
+        // 切换回游戏状态
+        next_state.set(GameState::Playing);
     }
 }

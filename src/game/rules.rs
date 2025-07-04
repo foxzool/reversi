@@ -1,9 +1,14 @@
-use super::{Board, PlayerColor, Move};
+use super::{Board, Move, PlayerColor};
 
 const DIRECTIONS: [(i8, i8); 8] = [
-    (-1, -1), (-1, 0), (-1, 1),
-    (0, -1),           (0, 1),
-    (1, -1),  (1, 0),  (1, 1),
+    (-1, -1),
+    (-1, 0),
+    (-1, 1),
+    (0, -1),
+    (0, 1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
 ];
 
 impl Board {
@@ -69,11 +74,11 @@ impl Board {
 
     fn get_moves_in_direction(&self, own: u64, opp: u64, empty: u64, dx: i8, dy: i8) -> u64 {
         let mut moves = 0u64;
-        
+
         for pos in 0..64 {
             let row = pos / 8;
             let col = pos % 8;
-            
+
             if empty & (1u64 << pos) == 0 {
                 continue;
             }

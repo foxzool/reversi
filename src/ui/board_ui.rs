@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::game::{Board, PlayerColor};
+use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct BoardSquare {
@@ -46,10 +46,7 @@ pub const BOARD_SIZE: f32 = 400.0;
 pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 pub const PIECE_RADIUS: f32 = SQUARE_SIZE * 0.35;
 
-pub fn setup_board_ui(
-    mut commands: Commands,
-    colors: Res<BoardColors>,
-) {
+pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
     commands.spawn(Camera2d);
 
     let _board_transform = Transform::from_xyz(0.0, 0.0, 0.0);
@@ -76,7 +73,7 @@ pub fn setup_board_ui(
 
     for i in 0..9 {
         let offset = (i as f32 - 4.0) * SQUARE_SIZE;
-        
+
         commands.spawn((
             Sprite::from_color(colors.line_color, Vec2::new(1.5, BOARD_SIZE)),
             Transform::from_xyz(offset, 0.0, 1.0),
@@ -139,7 +136,7 @@ pub fn update_valid_moves(
 
     if let Ok(board) = board_query.single() {
         let valid_moves = board.get_valid_moves_list(current_player.0);
-        
+
         for move_option in valid_moves {
             let (row, col) = Board::position_to_coords(move_option.position);
             let x = (col as f32 - 3.5) * SQUARE_SIZE;
