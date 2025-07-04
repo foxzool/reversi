@@ -37,7 +37,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Run Clippy
@@ -55,7 +55,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
       - name: Setup cache
         uses: Swatinem/rust-cache@v2
       - name: Run tests
@@ -93,7 +93,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build for web
         run: |
-          cargo build --release --target wasm32-unknown-unknown
+          cargo build --release --target wasm32-unknown-unknown --no-default-features
           wasm-bindgen --out-dir web-dist --web target/wasm32-unknown-unknown/release/reversi.wasm
       - name: Copy assets
         run: |
