@@ -4,7 +4,8 @@ use bevy::prelude::*;
 pub struct AudioAssets {
     pub piece_place: Handle<AudioSource>,
     pub piece_flip: Handle<AudioSource>,
-    pub game_over: Handle<AudioSource>,
+    pub victory: Handle<AudioSource>,
+    pub defeat: Handle<AudioSource>,
     pub invalid_move: Handle<AudioSource>,
 }
 
@@ -32,7 +33,8 @@ pub struct PlaySoundEvent {
 pub enum SoundType {
     PiecePlace,
     PieceFlip,
-    GameOver,
+    Victory,
+    Defeat,
     InvalidMove,
 }
 
@@ -43,7 +45,8 @@ pub fn load_audio_assets(
     let audio_assets = AudioAssets {
         piece_place: asset_server.load("sounds/piece_place.ogg"),
         piece_flip: asset_server.load("sounds/piece_flip.ogg"),
-        game_over: asset_server.load("sounds/game_over.ogg"),
+        victory: asset_server.load("sounds/victory.ogg"),
+        defeat: asset_server.load("sounds/defeat.ogg"),
         invalid_move: asset_server.load("sounds/invalid_move.ogg"),
     };
     
@@ -64,7 +67,8 @@ pub fn play_sound_system(
         let audio_source = match event.sound_type {
             SoundType::PiecePlace => &audio_assets.piece_place,
             SoundType::PieceFlip => &audio_assets.piece_flip,
-            SoundType::GameOver => &audio_assets.game_over,
+            SoundType::Victory => &audio_assets.victory,
+            SoundType::Defeat => &audio_assets.defeat,
             SoundType::InvalidMove => &audio_assets.invalid_move,
         };
 

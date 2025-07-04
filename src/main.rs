@@ -158,10 +158,7 @@ fn handle_player_move(
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
                 } else if !board.has_valid_moves(current_player.0) {
-                    // 游戏结束，播放游戏结束音效
-                    sound_events.write(PlaySoundEvent {
-                        sound_type: SoundType::GameOver,
-                    });
+                    // 游戏结束
                 }
             } else {
                 // 播放无效落子音效
@@ -221,10 +218,7 @@ fn handle_ai_move(
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
                 } else if !board.has_valid_moves(current_player.0) {
-                    // 游戏结束，播放游戏结束音效
-                    sound_events.write(PlaySoundEvent {
-                        sound_type: SoundType::GameOver,
-                    });
+                    // 游戏结束
                 }
             }
         }
@@ -234,9 +228,45 @@ fn handle_ai_move(
 fn check_game_over(
     board_query: Query<&Board>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
+    ai_query: Query<&AiPlayer>,
 ) {
     if let Ok(board) = board_query.single() {
         if board.is_game_over() {
+            // 播放游戏结束音效
+            if let Some(winner) = board.get_winner() {
+                // 如果有AI玩家，判断是玩家胜利还是AI胜利
+                if let Ok(ai_player) = ai_query.single() {
+                    if winner == ai_player.color {
+                        // AI胜利，玩家失败
+                        sound_events.write(PlaySoundEvent {
+                            sound_type: SoundType::Defeat,
+                        });
+                    } else {
+                        // 玩家胜利
+                        sound_events.write(PlaySoundEvent {
+                            sound_type: SoundType::Victory,
+                        });
+                    }
+                } else {
+                    // 没有AI，根据黑棋结果判断（玩家是黑棋）
+                    if winner == PlayerColor::Black {
+                        sound_events.write(PlaySoundEvent {
+                            sound_type: SoundType::Victory,
+                        });
+                    } else {
+                        sound_events.write(PlaySoundEvent {
+                            sound_type: SoundType::Defeat,
+                        });
+                    }
+                }
+            } else {
+                // 平局，播放胜利音效（因为没有输）
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::Victory,
+                });
+            }
+            
             next_state.set(GameState::GameOver);
         }
     }
