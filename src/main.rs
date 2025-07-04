@@ -39,7 +39,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Reversi".to_string(),
-                resolution: (800.0, 600.0).into(),
+                resolution: (1000.0, 800.0).into(),
                 ..default()
             }),
             ..default()
