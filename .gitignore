@@ -54,3 +54,5 @@ node_modules/
 
 # Bevy
 bevy_dylib/
+
+dist

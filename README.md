@@ -31,9 +31,13 @@ src/
 
 ## 运行方式
 
-### 测试基础功能
+### 本地开发
 ```bash
+# 测试基础功能
 cargo run --example simple_test
+
+# 运行完整游戏
+cargo run
 ```
 
 ### 运行完整游戏
@@ -84,7 +88,8 @@ cargo run
 ## 技术栈
 
 - **Bevy 0.16**: 现代Rust游戏引擎
-- **Rayon**: 并行计算框架
+- **Rayon**: 并行计算框架（桌面版）
+- **WASM**: Web平台支持
 - **位运算优化**: 高效的棋盘状态计算
 
 ## 开发特色
@@ -100,4 +105,40 @@ cargo run
 - **内存使用**: 50-200MB
 - **响应时间**: AI思考时间0.1-5秒（根据难度）
 
-这个项目展示了如何将传统游戏AI算法与现代Rust游戏引擎完美结合，创造出高性能、可扩展的游戏应用。
+## 部署选项
+
+### itch.io发布
+1. 运行 `./build_web.sh` 构建Web版本
+2. 将 `dist/` 文件夹压缩为ZIP文件
+3. 在itch.io上传为HTML游戏，设置index.html为主文件
+
+### GitHub Pages部署
+1. 构建Web版本后，将 `dist/` 内容推送到gh-pages分支
+2. 启用GitHub Pages即可访问
+
+### CI/CD自动化
+项目包含完整的GitHub Actions工作流：
+- **CI**: 自动格式检查、Clippy检查、测试和Web构建验证
+- **Release**: 支持多平台构建（Windows、Linux、macOS、Web）
+- **itch.io集成**: 可自动发布到itch.io平台
+
+## 开发依赖
+
+### 桌面开发
+```bash
+# Ubuntu/Debian
+sudo apt-get install libasound2-dev libudev-dev
+
+# 安装Rust工具链
+rustup target add wasm32-unknown-unknown
+```
+
+### Web开发额外依赖
+```bash
+cargo install wasm-bindgen-cli
+cargo install basic-http-server  # 用于本地测试
+```
+
+---
+
+这个项目展示了如何将传统游戏AI算法与现代Rust游戏引擎完美结合，支持桌面和Web双平台部署，创造出高性能、可扩展的游戏应用。

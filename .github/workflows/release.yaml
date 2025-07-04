@@ -1,0 +1,329 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+      upload_to_github:
+        description: 'Upload to GitHub releases'
+        required: true
+        type: boolean
+        default: true
+      upload_to_itch:
+        description: 'Upload to itch.io'
+        required: true
+        type: boolean
+        default: false
+
+env:
+  GAME_NAME: reversi
+  ITCH_USERNAME: ${{ secrets.ITCH_USERNAME }}
+  ITCH_GAME_NAME: ${{ secrets.ITCH_GAME_NAME }}
+
+jobs:
+  build-native:
+    name: Build Native
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-gnu
+            os: ubuntu-latest
+            artifact_name: reversi.exe
+            release_name: reversi-windows.zip
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact_name: reversi
+            release_name: reversi-linux.zip
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            artifact_name: reversi
+            release_name: reversi-macos.zip
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Windows)
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-mingw-w64-x86-64
+
+      - name: Install build dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare release directory
+        run: |
+          mkdir release
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} release/
+          if [ -d "assets" ]; then
+            cp -r assets release/
+          fi
+
+      - name: Create archive
+        run: |
+          cd release
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            7z a ../${{ matrix.release_name }} *
+          else
+            zip -r ../${{ matrix.release_name }} *
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.release_name }}
+          path: ${{ matrix.release_name }}
+
+  build-web:
+    name: Build Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build for web
+        run: |
+          cargo build --release --target wasm32-unknown-unknown
+          mkdir -p web-dist
+          wasm-bindgen --out-dir web-dist --web target/wasm32-unknown-unknown/release/reversi.wasm
+
+      - name: Copy assets
+        run: |
+          if [ -d "assets" ]; then
+            cp -r assets web-dist/
+          fi
+
+      - name: Generate index.html
+        run: |
+          cat > web-dist/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="utf-8">
+              <title>Reversi - Web Edition</title>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <style>
+                  body {
+                      margin: 0;
+                      padding: 0;
+                      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                      font-family: 'Arial', sans-serif;
+                      display: flex;
+                      flex-direction: column;
+                      align-items: center;
+                      justify-content: center;
+                      min-height: 100vh;
+                      color: white;
+                  }
+                  
+                  #loading {
+                      text-align: center;
+                      margin: 20px;
+                  }
+                  
+                  .spinner {
+                      border: 4px solid #f3f3f3;
+                      border-top: 4px solid #3498db;
+                      border-radius: 50%;
+                      width: 40px;
+                      height: 40px;
+                      animation: spin 2s linear infinite;
+                      margin: 20px auto;
+                  }
+                  
+                  @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                  }
+                  
+                  #gameContainer {
+                      text-align: center;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                  }
+                  
+                  canvas {
+                      background: #f0f0f0;
+                      border-radius: 8px;
+                      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                      max-width: 100%;
+                      height: auto;
+                  }
+                  
+                  .info {
+                      margin: 20px 0;
+                      background: rgba(255,255,255,0.1);
+                      padding: 15px;
+                      border-radius: 8px;
+                      backdrop-filter: blur(10px);
+                  }
+                  
+                  .controls {
+                      margin: 10px 0;
+                      font-size: 14px;
+                      opacity: 0.9;
+                  }
+                  
+                  h1 {
+                      margin: 20px 0;
+                      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                  }
+                  
+                  .error {
+                      color: #ff6b6b;
+                      background: rgba(255,107,107,0.1);
+                      padding: 15px;
+                      border-radius: 8px;
+                      border: 1px solid #ff6b6b;
+                      margin: 20px;
+                  }
+              </style>
+          </head>
+          <body>
+              <div id="gameContainer">
+                  <h1>🔴⚫ Reversi - Web Edition</h1>
+                  
+                  <div id="loading">
+                      <div class="spinner"></div>
+                      <p>Loading game...</p>
+                  </div>
+                  
+                  <div class="info">
+                      <h3>How to Play</h3>
+                      <div class="controls">
+                          <p><strong>Mouse:</strong> Click to place pieces</p>
+                          <p><strong>Keyboard:</strong> 1-4 (AI difficulty) • M (toggle sound) • Space/Enter (restart when game ends)</p>
+                      </div>
+                  </div>
+              </div>
+
+              <script type="module">
+                  import init from './reversi.js';
+                  
+                  async function run() {
+                      try {
+                          await init();
+                          document.getElementById('loading').style.display = 'none';
+                          console.log('🎮 Reversi game loaded successfully!');
+                      } catch (error) {
+                          console.error('Failed to load game:', error);
+                          document.getElementById('loading').innerHTML = `
+                              <div class="error">
+                                  <h3>Failed to load game</h3>
+                                  <p>Error: ${error.message}</p>
+                                  <p>Please try refreshing the page.</p>
+                              </div>
+                          `;
+                      }
+                  }
+                  
+                  run();
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Create web release archive
+        run: |
+          cd web-dist
+          zip -r ../reversi-web.zip *
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: reversi-web.zip
+          path: reversi-web.zip
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-native, build-web]
+    if: inputs.upload_to_github
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          body: |
+            ## Reversi Game Release ${{ inputs.version }}
+            
+            ### Downloads
+            - **Windows**: reversi-windows.zip
+            - **Linux**: reversi-linux.zip  
+            - **macOS**: reversi-macos.zip
+            - **Web**: reversi-web.zip (for itch.io or web hosting)
+            
+            ### How to Play
+            - **Mouse**: Click to place pieces
+            - **Keyboard**: 1-4 (change AI difficulty), M (toggle sound), Space/Enter (restart)
+            
+            ### Web Version
+            Extract reversi-web.zip and upload to itch.io as an HTML game, or host on any web server.
+          files: |
+            reversi-windows.zip/*
+            reversi-linux.zip/*
+            reversi-macos.zip/*
+            reversi-web.zip/*
+          draft: false
+          prerelease: false
+
+  upload-to-itch:
+    name: Upload to itch.io
+    runs-on: ubuntu-latest
+    needs: [build-web]
+    if: inputs.upload_to_itch && env.ITCH_USERNAME != '' && env.ITCH_GAME_NAME != ''
+    steps:
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: reversi-web.zip
+
+      - name: Install butler
+        run: |
+          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip butler.zip
+          chmod +x butler
+          sudo mv butler /usr/local/bin/
+
+      - name: Upload to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          butler push reversi-web.zip ${{ env.ITCH_USERNAME }}/${{ env.ITCH_GAME_NAME }}:web --userversion "${{ inputs.version }}"
