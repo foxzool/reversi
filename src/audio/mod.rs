@@ -64,14 +64,15 @@ pub fn play_sound_system(
     }
 
     for event in sound_events.read() {
-        let audio_source = match event.sound_type {
-            SoundType::PiecePlace => &audio_assets.piece_place,
-            SoundType::PieceFlip => &audio_assets.piece_flip,
-            SoundType::Victory => &audio_assets.victory,
-            SoundType::Defeat => &audio_assets.defeat,
-            SoundType::InvalidMove => &audio_assets.invalid_move,
+        let (audio_source, sound_name) = match event.sound_type {
+            SoundType::PiecePlace => (&audio_assets.piece_place, "落子音效"),
+            SoundType::PieceFlip => (&audio_assets.piece_flip, "翻转音效"),
+            SoundType::Victory => (&audio_assets.victory, "胜利音效"),
+            SoundType::Defeat => (&audio_assets.defeat, "失败音效"),
+            SoundType::InvalidMove => (&audio_assets.invalid_move, "错误音效"),
         };
 
+        println!("播放音效: {}", sound_name);
         commands.spawn(AudioPlayer::new(audio_source.clone()));
     }
 }

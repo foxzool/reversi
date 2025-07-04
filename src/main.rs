@@ -68,9 +68,14 @@ fn main() {
                 update_turn_indicator,
                 update_difficulty_text,
                 check_game_over,
+            ).run_if(in_state(GameState::Playing))
+        )
+        .add_systems(
+            Update,
+            (
                 play_sound_system,
                 toggle_audio_system,
-            ).run_if(in_state(GameState::Playing))
+            )
         )
         .run();
 }
@@ -230,20 +235,30 @@ fn check_game_over(
     mut next_state: ResMut<NextState<GameState>>,
     mut sound_events: EventWriter<PlaySoundEvent>,
     ai_query: Query<&AiPlayer>,
+    current_state: Res<State<GameState>>,
 ) {
+    // 只在Playing状态下检查游戏结束
+    if current_state.get() != &GameState::Playing {
+        return;
+    }
+    
     if let Ok(board) = board_query.single() {
         if board.is_game_over() {
+            println!("检测到游戏结束！");
+            
             // 播放游戏结束音效
             if let Some(winner) = board.get_winner() {
                 // 如果有AI玩家，判断是玩家胜利还是AI胜利
                 if let Ok(ai_player) = ai_query.single() {
                     if winner == ai_player.color {
                         // AI胜利，玩家失败
+                        println!("游戏结束：AI胜利，播放失败音效");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
                     } else {
                         // 玩家胜利
+                        println!("游戏结束：玩家胜利，播放胜利音效");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
@@ -251,10 +266,12 @@ fn check_game_over(
                 } else {
                     // 没有AI，根据黑棋结果判断（玩家是黑棋）
                     if winner == PlayerColor::Black {
+                        println!("游戏结束：黑棋胜利，播放胜利音效");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
                     } else {
+                        println!("游戏结束：白棋胜利，播放失败音效");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
@@ -262,6 +279,7 @@ fn check_game_over(
                 }
             } else {
                 // 平局，播放胜利音效（因为没有输）
+                println!("游戏结束：平局，播放胜利音效");
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::Victory,
                 });
