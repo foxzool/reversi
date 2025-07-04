@@ -1,6 +1,7 @@
 mod game;
 mod ai;
 mod ui;
+mod audio;
 
 use bevy::prelude::*;
 use game::{Board, PlayerColor, Move};
@@ -10,6 +11,10 @@ use ui::{
     setup_board_ui, update_pieces, update_valid_moves,
     setup_game_ui, update_score_text, update_current_player_text, update_game_status_text,
     update_turn_indicator, update_difficulty_text, SQUARE_SIZE
+};
+use audio::{
+    AudioSettings, PlaySoundEvent, SoundType,
+    load_audio_assets, play_sound_system, toggle_audio_system
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -42,10 +47,12 @@ fn main() {
         .init_state::<GameState>()
         .add_event::<PlayerMoveEvent>()
         .add_event::<AiMoveEvent>()
+        .add_event::<PlaySoundEvent>()
         .init_resource::<BoardColors>()
+        .init_resource::<AudioSettings>()
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
-        .add_systems(Startup, (setup_board_ui, setup_game_ui, setup_game))
+        .add_systems(Startup, (setup_board_ui, setup_game_ui, setup_game, load_audio_assets))
         .add_systems(
             Update,
             (
@@ -61,6 +68,8 @@ fn main() {
                 update_turn_indicator,
                 update_difficulty_text,
                 check_game_over,
+                play_sound_system,
+                toggle_audio_system,
             ).run_if(in_state(GameState::Playing))
         )
         .run();
@@ -128,18 +137,37 @@ fn handle_player_move(
     mut move_events: EventReader<PlayerMoveEvent>,
     mut board_query: Query<&mut Board>,
     mut current_player: ResMut<CurrentPlayer>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     for event in move_events.read() {
         if let Ok(mut board) = board_query.single_mut() {
             if board.is_valid_move(event.position, current_player.0) {
                 board.make_move(event.position, current_player.0);
                 
+                // 播放落子音效
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::PiecePlace,
+                });
+                
+                // 播放翻转音效
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::PieceFlip,
+                });
+                
                 let next_player = current_player.0.opposite();
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
                 } else if !board.has_valid_moves(current_player.0) {
-                    // 游戏结束
+                    // 游戏结束，播放游戏结束音效
+                    sound_events.write(PlaySoundEvent {
+                        sound_type: SoundType::GameOver,
+                    });
                 }
+            } else {
+                // 播放无效落子音效
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::InvalidMove,
+                });
             }
         }
     }
@@ -174,15 +202,29 @@ fn handle_ai_move(
     mut ai_move_events: EventReader<AiMoveEvent>,
     mut board_query: Query<&mut Board>,
     mut current_player: ResMut<CurrentPlayer>,
+    mut sound_events: EventWriter<PlaySoundEvent>,
 ) {
     for event in ai_move_events.read() {
         if let Ok(mut board) = board_query.single_mut() {
             if board.make_move(event.ai_move.position, current_player.0) {
+                // 播放AI落子音效
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::PiecePlace,
+                });
+                
+                // 播放翻转音效
+                sound_events.write(PlaySoundEvent {
+                    sound_type: SoundType::PieceFlip,
+                });
+                
                 let next_player = current_player.0.opposite();
                 if board.has_valid_moves(next_player) {
                     current_player.0 = next_player;
                 } else if !board.has_valid_moves(current_player.0) {
-                    // 游戏结束
+                    // 游戏结束，播放游戏结束音效
+                    sound_events.write(PlaySoundEvent {
+                        sound_type: SoundType::GameOver,
+                    });
                 }
             }
         }
