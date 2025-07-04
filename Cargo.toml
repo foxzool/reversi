@@ -2,13 +2,15 @@
 name = "reversi"
 version = "0.1.0"
 edition = "2021"
+license = "MIT OR Apache-2.0 OR CC0-1.0"
+authors = ["ZoOL <zhooul@gmail.com>"]
+readme = "README.md"
 
 [dependencies]
 bevy = { version = "0.16", features = ["wayland"] }
 rand = "0.8"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rayon = "1.8"
+
 
 # Compile low-severity logs out of native builds for performance.
 log = { version = "0.4", features = [
@@ -63,6 +65,9 @@ default-features = false
 
 [package.metadata.bevy_cli.web.dev]
 features = ["dev"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = "1.8"
 
 [lints.rust]
 # Mark `bevy_lint` as a valid `cfg`, as it is set when the Bevy linter runs.
