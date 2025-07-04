@@ -3,17 +3,21 @@ use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct BoardSquare {
+    #[allow(dead_code)]
     pub position: u8,
 }
 
 #[derive(Component)]
 pub struct Piece {
+    #[allow(dead_code)]
     pub color: PlayerColor,
+    #[allow(dead_code)]
     pub position: u8,
 }
 
 #[derive(Component)]
 pub struct ValidMoveIndicator {
+    #[allow(dead_code)]
     pub position: u8,
 }
 
@@ -25,6 +29,7 @@ pub struct BoardColors {
     pub black_piece_color: bevy::prelude::Color,
     pub white_piece_color: bevy::prelude::Color,
     pub valid_move_color: bevy::prelude::Color,
+    #[allow(dead_code)]
     pub hover_color: bevy::prelude::Color,
 }
 

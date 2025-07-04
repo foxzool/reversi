@@ -17,6 +17,7 @@ pub struct SearchParams {
     pub max_depth: u8,
     pub time_limit: Duration,
     pub mistake_probability: f32,
+    #[allow(dead_code)]
     pub use_opening_book: bool,
 }
 

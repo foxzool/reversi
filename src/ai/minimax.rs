@@ -6,9 +6,13 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, Default)]
 pub struct SearchResult {
     pub best_move: Option<Move>,
+    #[allow(dead_code)]
     pub evaluation: i32,
+    #[allow(dead_code)]
     pub depth_reached: u8,
+    #[allow(dead_code)]
     pub nodes_evaluated: u64,
+    #[allow(dead_code)]
     pub completed: bool,
 }
 

@@ -12,6 +12,7 @@ pub struct AudioAssets {
 #[derive(Resource)]
 pub struct AudioSettings {
     pub enabled: bool,
+    #[allow(dead_code)]
     pub volume: f32,
 }
 
@@ -69,7 +70,7 @@ pub fn play_sound_system(
             SoundType::InvalidMove => (&audio_assets.invalid_move, "错误音效"),
         };
 
-        println!("播放音效: {}", sound_name);
+        println!("播放音效: {sound_name}");
         commands.spawn(AudioPlayer::new(audio_source.clone()));
     }
 }
@@ -85,6 +86,6 @@ pub fn toggle_audio_system(
         } else {
             "关闭"
         };
-        println!("音效已{}", status);
+        println!("音效已{status}");
     }
 }

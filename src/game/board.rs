@@ -95,6 +95,7 @@ impl Board {
         (row, col)
     }
 
+    #[allow(dead_code)]
     pub fn coords_to_position(row: usize, col: usize) -> u8 {
         (row * 8 + col) as u8
     }

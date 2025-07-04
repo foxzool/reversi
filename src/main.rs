@@ -325,20 +325,20 @@ fn restart_game(
 ) {
     for _event in restart_events.read() {
         println!("执行游戏重新开始");
-        
+
         // 重置棋盘
         if let Ok(mut board) = board_query.single_mut() {
             *board = Board::new();
         }
-        
+
         // 重置当前玩家为黑棋
         current_player.0 = PlayerColor::Black;
-        
+
         // 重置AI思考计时器
         if let Ok(mut ai_player) = ai_query.single_mut() {
             ai_player.thinking_timer.reset();
         }
-        
+
         // 切换回游戏状态
         next_state.set(GameState::Playing);
     }

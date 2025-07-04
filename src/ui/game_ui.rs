@@ -16,11 +16,13 @@ pub struct GameStatusText;
 
 #[derive(Component)]
 pub struct PlayerAvatar {
+    #[allow(dead_code)]
     pub player_color: PlayerColor,
 }
 
 #[derive(Component)]
 pub struct PlayerNameText {
+    #[allow(dead_code)]
     pub player_color: PlayerColor,
 }
 
