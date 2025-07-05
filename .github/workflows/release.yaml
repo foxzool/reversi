@@ -326,6 +326,13 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
         run: |
+          if [ -z "$BUTLER_API_KEY" ]; then
+            echo "⚠️  BUTLER_CREDENTIALS secret not configured - skipping itch.io upload"
+            echo "ℹ️  To enable itch.io uploads, add your Butler API key as BUTLER_CREDENTIALS secret"
+            echo "ℹ️  See: https://itch.io/docs/butler/login.html"
+            exit 0
+          fi
+          
           for channel in $(ls tmp); do
             ./butler push \
               --fix-permissions \
