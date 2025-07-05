@@ -1,19 +1,10 @@
-use bevy::prelude::*;
 use crate::localization::{Language, LanguageSettings};
+use bevy::prelude::*;
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct FontAssets {
     pub default_font: Handle<Font>,
     pub chinese_font: Handle<Font>,
-}
-
-impl Default for FontAssets {
-    fn default() -> Self {
-        Self {
-            default_font: Handle::default(),
-            chinese_font: Handle::default(),
-        }
-    }
 }
 
 pub fn load_font_assets(mut commands: Commands, asset_server: Res<AssetServer>) {

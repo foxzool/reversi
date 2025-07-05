@@ -53,12 +53,11 @@ impl Default for BoardColors {
     }
 }
 
-pub const BOARD_SIZE: f32 = 320.0;  // 减小棋盘尺寸为手机优化
+pub const BOARD_SIZE: f32 = 320.0; // 减小棋盘尺寸为手机优化
 pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 pub const PIECE_RADIUS: f32 = SQUARE_SIZE * 0.35;
 
 pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
-
     let _board_transform = Transform::from_xyz(0.0, 0.0, 0.0);
 
     for row in 0..8 {

@@ -1,7 +1,7 @@
-use super::{CurrentPlayer, ToggleRulesEvent, UiState, RestartGameEvent};
+use super::{CurrentPlayer, RestartGameEvent, ToggleRulesEvent, UiState};
 use crate::{
     ai::{AiDifficulty, AiPlayer},
-    fonts::{FontAssets, LocalizedText, get_font_for_language},
+    fonts::{get_font_for_language, FontAssets, LocalizedText},
     game::{Board, PlayerColor},
     localization::LanguageSettings,
 };
@@ -55,20 +55,23 @@ pub fn setup_game_ui(
     let texts = language_settings.get_texts();
     // 创建根UI容器
     commands
-        .spawn((Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            flex_direction: FlexDirection::Column,
-            justify_content: JustifyContent::SpaceBetween,
-            align_items: AlignItems::Center,
-            ..default()
-        }, GameUI))
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            GameUI,
+        ))
         .with_children(|parent| {
             // 顶部区域 - Bill
             parent
                 .spawn((Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(120.0),  // 增加高度为手机优化
+                    height: Val::Px(120.0), // 增加高度为手机优化
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -119,7 +122,7 @@ pub fn setup_game_ui(
             parent
                 .spawn((Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(120.0),  // 增加高度为手机优化
+                    height: Val::Px(120.0), // 增加高度为手机优化
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -172,7 +175,7 @@ pub fn setup_game_ui(
                 row_gap: Val::Px(6.0),
                 align_items: AlignItems::End,
                 padding: UiRect::all(Val::Px(8.0)),
-                max_width: Val::Px(120.0),  // 限制最大宽度适应手机屏幕
+                max_width: Val::Px(120.0), // 限制最大宽度适应手机屏幕
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
@@ -182,10 +185,15 @@ pub fn setup_game_ui(
         .with_children(|parent| {
             // 分数显示
             parent.spawn((
-                Text::new(texts.score_format.replacen("{}", "2", 1).replacen("{}", "2", 1)),
+                Text::new(
+                    texts
+                        .score_format
+                        .replacen("{}", "2", 1)
+                        .replacen("{}", "2", 1),
+                ),
                 TextFont {
                     font: font.clone(),
-                    font_size: 14.0,  // 手机优化尺寸
+                    font_size: 14.0, // 手机优化尺寸
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -195,10 +203,14 @@ pub fn setup_game_ui(
 
             // AI难度显示
             parent.spawn((
-                Text::new(texts.ai_difficulty_format.replace("{}", texts.difficulty_medium)),
+                Text::new(
+                    texts
+                        .ai_difficulty_format
+                        .replace("{}", texts.difficulty_medium),
+                ),
                 TextFont {
                     font: font.clone(),
-                    font_size: 12.0,  // 手机优化尺寸
+                    font_size: 12.0, // 手机优化尺寸
                     ..default()
                 },
                 TextColor(Color::srgb(0.8, 0.8, 0.8)),
@@ -207,56 +219,58 @@ pub fn setup_game_ui(
             ));
 
             // 规则按钮
-            parent.spawn((
-                Button,
-                Node {
-                    padding: UiRect::all(Val::Px(4.0)),
-                    align_self: AlignSelf::Center,
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
-                BorderColor(Color::srgb(0.6, 0.6, 0.6)),
-                BorderRadius::all(Val::Px(4.0)),
-                RulesButton,
-            ))
-            .with_children(|button| {
-                button.spawn((
-                    Text::new("?"), // 规则按钮符号保持通用
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 16.0,  // 手机优化尺寸
+            parent
+                .spawn((
+                    Button,
+                    Node {
+                        padding: UiRect::all(Val::Px(4.0)),
+                        align_self: AlignSelf::Center,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
-                    LocalizedText,
-                ));
-            });
+                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
+                    BorderColor(Color::srgb(0.6, 0.6, 0.6)),
+                    BorderRadius::all(Val::Px(4.0)),
+                    RulesButton,
+                ))
+                .with_children(|button| {
+                    button.spawn((
+                        Text::new("?"), // 规则按钮符号保持通用
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0, // 手机优化尺寸
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        LocalizedText,
+                    ));
+                });
 
             // 重新开始按钮
-            parent.spawn((
-                Button,
-                Node {
-                    padding: UiRect::all(Val::Px(4.0)),
-                    align_self: AlignSelf::Center,
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.8, 0.2, 0.2, 0.8)),
-                BorderColor(Color::srgb(1.0, 0.4, 0.4)),
-                BorderRadius::all(Val::Px(4.0)),
-                RestartButton,
-            ))
-            .with_children(|button| {
-                button.spawn((
-                    Text::new("↻"), // 重新开始按钮符号保持通用
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 16.0,  // 手机优化尺寸
+            parent
+                .spawn((
+                    Button,
+                    Node {
+                        padding: UiRect::all(Val::Px(4.0)),
+                        align_self: AlignSelf::Center,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
-                    LocalizedText,
-                ));
-            });
+                    BackgroundColor(Color::srgba(0.8, 0.2, 0.2, 0.8)),
+                    BorderColor(Color::srgb(1.0, 0.4, 0.4)),
+                    BorderRadius::all(Val::Px(4.0)),
+                    RestartButton,
+                ))
+                .with_children(|button| {
+                    button.spawn((
+                        Text::new("↻"), // 重新开始按钮符号保持通用
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0, // 手机优化尺寸
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        LocalizedText,
+                    ));
+                });
         });
 
     // 游戏状态信息 - 右下角
@@ -266,7 +280,7 @@ pub fn setup_game_ui(
             right: Val::Px(8.0),
             bottom: Val::Px(8.0),
             padding: UiRect::all(Val::Px(8.0)),
-            max_width: Val::Px(180.0),  // 限制最大宽度适应手机屏幕
+            max_width: Val::Px(180.0), // 限制最大宽度适应手机屏幕
             ..default()
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
@@ -274,7 +288,7 @@ pub fn setup_game_ui(
         Text::new(texts.game_in_progress),
         TextFont {
             font: font.clone(),
-            font_size: 12.0,  // 手机优化尺寸
+            font_size: 12.0, // 手机优化尺寸
             ..default()
         },
         TextColor(Color::WHITE),
@@ -293,8 +307,9 @@ pub fn update_score_text(
         let black_count = board.count_pieces(PlayerColor::Black);
         let white_count = board.count_pieces(PlayerColor::White);
         let texts = language_settings.get_texts();
-        **text = texts.score_format
-            .replacen("{}", &black_count.to_string(), 1)  // 只替换第一个{}
+        **text = texts
+            .score_format
+            .replacen("{}", &black_count.to_string(), 1) // 只替换第一个{}
             .replacen("{}", &white_count.to_string(), 1); // 再替换下一个{}
     }
 }
@@ -318,10 +333,11 @@ pub fn update_game_status_text(
 ) {
     if let (Ok(mut text), Ok(board)) = (status_query.single_mut(), board_query.single()) {
         let texts = language_settings.get_texts();
-        
+
         if board.is_game_over() {
             if let Some(winner) = board.get_winner() {
-                **text = format!("{} {}", 
+                **text = format!(
+                    "{} {}",
                     match winner {
                         PlayerColor::Black => texts.black_wins,
                         PlayerColor::White => texts.white_wins,
@@ -406,7 +422,7 @@ pub fn manage_rules_panel(
 }
 
 fn spawn_rules_panel(
-    commands: &mut Commands, 
+    commands: &mut Commands,
     language_settings: &LanguageSettings,
     font_assets: &FontAssets,
 ) {
@@ -464,33 +480,34 @@ fn spawn_rules_panel(
             ));
 
             // 关闭按钮
-            panel.spawn((
-                Button,
-                Node {
-                    width: Val::Px(100.0),
-                    height: Val::Px(40.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    align_self: AlignSelf::Center,
-                    ..default()
-                },
-                BackgroundColor(Color::srgb(0.3, 0.3, 0.3)),
-                BorderColor(Color::srgb(0.6, 0.6, 0.6)),
-                BorderRadius::all(Val::Px(5.0)),
-                RulesButton, // 复用按钮组件来关闭
-            ))
-            .with_children(|button| {
-                button.spawn((
-                    Text::new(texts.rules_close),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 16.0,
+            panel
+                .spawn((
+                    Button,
+                    Node {
+                        width: Val::Px(100.0),
+                        height: Val::Px(40.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        align_self: AlignSelf::Center,
                         ..default()
                     },
-                    TextColor(Color::WHITE),
-                    LocalizedText,
-                ));
-            });
+                    BackgroundColor(Color::srgb(0.3, 0.3, 0.3)),
+                    BorderColor(Color::srgb(0.6, 0.6, 0.6)),
+                    BorderRadius::all(Val::Px(5.0)),
+                    RulesButton, // 复用按钮组件来关闭
+                ))
+                .with_children(|button| {
+                    button.spawn((
+                        Text::new(texts.rules_close),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        LocalizedText,
+                    ));
+                });
         });
 }
 

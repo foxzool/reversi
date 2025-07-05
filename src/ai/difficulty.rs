@@ -8,10 +8,10 @@ use crate::game::{Board, Move, PlayerColor};
 use bevy::prelude::*;
 use rand::{random, Rng};
 // 时间相关功能：根据平台支持情况选择合适的Duration类型
-#[cfg(not(any(target_arch = "wasm32", target_family = "wasm")))]
-use std::time::Duration;
 #[cfg(any(target_arch = "wasm32", target_family = "wasm"))]
 use core::time::Duration;
+#[cfg(not(any(target_arch = "wasm32", target_family = "wasm")))]
+use std::time::Duration;
 
 /// AI难度级别枚举
 ///

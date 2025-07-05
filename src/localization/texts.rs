@@ -1,5 +1,6 @@
 /// 本地化文本结构
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct LocalizedTexts {
     // 语言选择界面
     pub language_selection_title: &'static str,

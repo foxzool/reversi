@@ -1,7 +1,7 @@
 pub mod texts;
 
-pub use texts::*;
 use bevy::prelude::*;
+pub use texts::*;
 
 /// 支持的语言枚举
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
