@@ -47,7 +47,7 @@ impl Default for BoardColors {
     }
 }
 
-pub const BOARD_SIZE: f32 = 400.0;
+pub const BOARD_SIZE: f32 = 320.0;  // 减小棋盘尺寸为手机优化
 pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 pub const PIECE_RADIUS: f32 = SQUARE_SIZE * 0.35;
 

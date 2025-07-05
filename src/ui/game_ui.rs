@@ -61,7 +61,7 @@ pub fn setup_game_ui(
             parent
                 .spawn((Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(100.0),
+                    height: Val::Px(120.0),  // 增加高度为手机优化
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -112,7 +112,7 @@ pub fn setup_game_ui(
             parent
                 .spawn((Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(100.0),
+                    height: Val::Px(120.0),  // 增加高度为手机优化
                     flex_direction: FlexDirection::Column,
                     justify_content: JustifyContent::Center,
                     align_items: AlignItems::Center,
@@ -159,16 +159,17 @@ pub fn setup_game_ui(
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                right: Val::Px(10.0),
-                top: Val::Px(10.0),
+                right: Val::Px(8.0),
+                top: Val::Px(8.0),
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(8.0),
+                row_gap: Val::Px(6.0),
                 align_items: AlignItems::End,
-                padding: UiRect::all(Val::Px(10.0)),
+                padding: UiRect::all(Val::Px(8.0)),
+                max_width: Val::Px(120.0),  // 限制最大宽度适应手机屏幕
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-            BorderRadius::all(Val::Px(8.0)),
+            BorderRadius::all(Val::Px(6.0)),
         ))
         .with_children(|parent| {
             // 分数显示
@@ -176,7 +177,7 @@ pub fn setup_game_ui(
                 Text::new("B:2 W:2"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 16.0,
+                    font_size: 14.0,  // 手机优化尺寸
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -189,7 +190,7 @@ pub fn setup_game_ui(
                 Text::new("AI: Medium"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 14.0,
+                    font_size: 12.0,  // 手机优化尺寸
                     ..default()
                 },
                 TextColor(Color::srgb(0.8, 0.8, 0.8)),
@@ -201,13 +202,13 @@ pub fn setup_game_ui(
             parent.spawn((
                 Button,
                 Node {
-                    padding: UiRect::all(Val::Px(6.0)),
+                    padding: UiRect::all(Val::Px(4.0)),
                     align_self: AlignSelf::Center,
                     ..default()
                 },
                 BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
                 BorderColor(Color::srgb(0.6, 0.6, 0.6)),
-                BorderRadius::all(Val::Px(6.0)),
+                BorderRadius::all(Val::Px(4.0)),
                 RulesButton,
             ))
             .with_children(|button| {
@@ -215,7 +216,7 @@ pub fn setup_game_ui(
                     Text::new("?"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 18.0,
+                        font_size: 16.0,  // 手机优化尺寸
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -228,17 +229,18 @@ pub fn setup_game_ui(
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
-            right: Val::Px(10.0),
-            bottom: Val::Px(10.0),
-            padding: UiRect::all(Val::Px(10.0)),
+            right: Val::Px(8.0),
+            bottom: Val::Px(8.0),
+            padding: UiRect::all(Val::Px(8.0)),
+            max_width: Val::Px(180.0),  // 限制最大宽度适应手机屏幕
             ..default()
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-        BorderRadius::all(Val::Px(8.0)),
+        BorderRadius::all(Val::Px(6.0)),
         Text::new("Game in progress"),
         TextFont {
             font: font.clone(),
-            font_size: 14.0,
+            font_size: 12.0,  // 手机优化尺寸
             ..default()
         },
         TextColor(Color::WHITE),

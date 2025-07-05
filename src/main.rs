@@ -47,7 +47,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Reversi".to_string(),
-                resolution: (800.0, 800.0).into(),
+                resolution: (400.0, 600.0).into(),  // 手机比例优化
                 // 移动端适配设置
                 fit_canvas_to_parent: true,
                 prevent_default_event_handling: false,
