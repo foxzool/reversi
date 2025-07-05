@@ -52,7 +52,6 @@ pub const SQUARE_SIZE: f32 = BOARD_SIZE / 8.0;
 pub const PIECE_RADIUS: f32 = SQUARE_SIZE * 0.35;
 
 pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
-    commands.spawn(Camera2d);
 
     let _board_transform = Transform::from_xyz(0.0, 0.0, 0.0);
 

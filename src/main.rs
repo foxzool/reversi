@@ -71,7 +71,7 @@ fn main() {
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
         .add_systems(
             Startup,
-            (load_audio_assets, load_font_assets),
+            (load_audio_assets, load_font_assets, setup_camera),
         )
         .add_systems(
             Update,
@@ -115,6 +115,11 @@ fn main() {
             ),
         )
         .run();
+}
+
+fn setup_camera(mut commands: Commands) {
+    // 创建共享的2D相机
+    commands.spawn(Camera2d);
 }
 
 fn setup_game(mut commands: Commands) {
@@ -442,8 +447,6 @@ fn setup_language_selection_ui(
 ) {
     // 总是使用中文字体以确保"中文"按钮能正确显示
     let font = font_assets.chinese_font.clone();
-    // 创建2D相机
-    commands.spawn(Camera2d);
 
     // 语言选择界面
     commands
