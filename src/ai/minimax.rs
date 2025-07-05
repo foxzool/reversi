@@ -14,6 +14,8 @@ use crate::game::{Board, Move, PlayerColor};
 // 只在非WebAssembly平台导入并行计算库
 #[cfg(not(target_arch = "wasm32"))]
 use rayon::prelude::*;
+// 时间相关功能：在支持的平台上使用，不支持的平台跳过
+#[cfg(not(any(target_arch = "wasm32", target_family = "wasm")))]
 use std::time::{Duration, Instant};
 
 /// 搜索结果结构体
@@ -209,7 +211,7 @@ pub fn find_best_move(board: &Board, depth: u8, player: PlayerColor) -> SearchRe
 ///
 /// # 参数
 /// * `board` - 当前棋盘状态
-/// * `time_limit` - 搜索时间限制
+/// * `time_limit` - 搜索时间限制（在不支持时间的平台上被忽略）
 /// * `max_depth` - 最大搜索深度
 /// * `player` - 要寻找最佳走法的玩家
 ///
@@ -217,9 +219,11 @@ pub fn find_best_move(board: &Board, depth: u8, player: PlayerColor) -> SearchRe
 /// 在时间限制内找到的最佳搜索结果
 ///
 /// # 算法优势
-/// - 时间控制：保证在限定时间内返回结果
+/// - 时间控制：保证在限定时间内返回结果（支持的平台）
 /// - 渐进优化：更深的搜索通常产生更好的结果
 /// - 提前终止：在时间不足时使用已有的较浅结果
+/// - 跨平台兼容：在不支持时间的平台上回退到固定深度搜索
+#[cfg(not(any(target_arch = "wasm32", target_family = "wasm")))]
 pub fn find_best_move_with_time_limit(
     board: &Board,
     time_limit: Duration,
@@ -252,4 +256,20 @@ pub fn find_best_move_with_time_limit(
     }
 
     best_result
+}
+
+/// 带时间限制的迭代加深搜索（不支持时间的平台版本）
+///
+/// 在不支持时间功能的平台上，直接使用最大深度进行搜索
+/// 这确保了跨平台兼容性，特别是在WebAssembly等环境中
+#[cfg(any(target_arch = "wasm32", target_family = "wasm"))]
+pub fn find_best_move_with_time_limit(
+    board: &Board,
+    _time_limit: core::time::Duration, // 参数保持兼容但不使用
+    max_depth: u8,
+    player: PlayerColor,
+) -> SearchResult {
+    // 在不支持时间的平台上，直接使用最大深度搜索
+    // 这样既保证了API兼容性，又避免了时间相关的错误
+    find_best_move(board, max_depth, player)
 }
