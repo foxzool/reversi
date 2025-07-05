@@ -63,14 +63,14 @@ pub fn play_sound_system(
 
     for event in sound_events.read() {
         let (audio_source, sound_name) = match event.sound_type {
-            SoundType::PiecePlace => (&audio_assets.piece_place, "落子音效"),
-            SoundType::PieceFlip => (&audio_assets.piece_flip, "翻转音效"),
-            SoundType::Victory => (&audio_assets.victory, "胜利音效"),
-            SoundType::Defeat => (&audio_assets.defeat, "失败音效"),
-            SoundType::InvalidMove => (&audio_assets.invalid_move, "错误音效"),
+            SoundType::PiecePlace => (&audio_assets.piece_place, "piece place"),
+            SoundType::PieceFlip => (&audio_assets.piece_flip, "piece flip"),
+            SoundType::Victory => (&audio_assets.victory, "victory"),
+            SoundType::Defeat => (&audio_assets.defeat, "defeat"),
+            SoundType::InvalidMove => (&audio_assets.invalid_move, "invalid move"),
         };
 
-        println!("播放音效: {sound_name}");
+        println!("Playing sound: {sound_name}");
         commands.spawn(AudioPlayer::new(audio_source.clone()));
     }
 }
@@ -82,10 +82,10 @@ pub fn toggle_audio_system(
     if keyboard_input.just_pressed(KeyCode::KeyM) {
         audio_settings.enabled = !audio_settings.enabled;
         let status = if audio_settings.enabled {
-            "开启"
+            "enabled"
         } else {
-            "关闭"
+            "disabled"
         };
-        println!("音效已{status}");
+        println!("Audio {status}");
     }
 }

@@ -158,7 +158,7 @@ pub fn setup_game_ui(mut commands: Commands) {
         .with_children(|parent| {
             // 分数显示 - 更紧凑
             parent.spawn((
-                Text::new("●2 ○2"),
+                Text::new("B:2 W:2"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -169,7 +169,7 @@ pub fn setup_game_ui(mut commands: Commands) {
 
             // AI难度显示 - 移动端简化显示
             parent.spawn((
-                Text::new("AI: 中级"),
+                Text::new("AI: Medium"),
                 TextFont {
                     font_size: 12.0,
                     ..default()
@@ -209,7 +209,7 @@ pub fn update_score_text(
     if let (Ok(mut text), Ok(board)) = (score_query.single_mut(), board_query.single()) {
         let black_count = board.count_pieces(PlayerColor::Black);
         let white_count = board.count_pieces(PlayerColor::White);
-        **text = format!("●{black_count} ○{white_count}");
+        **text = format!("B:{black_count} W:{white_count}");
     }
 }
 
@@ -232,9 +232,9 @@ pub fn update_game_status_text(
     if let (Ok(mut text), Ok(board)) = (status_query.single_mut(), board_query.single()) {
         if board.is_game_over() {
             if let Some(winner) = board.get_winner() {
-                **text = format!("{winner:?} wins! Tap to restart");
+                **text = format!("{winner:?} wins! Click to restart");
             } else {
-                **text = "Draw! Tap to restart".to_string();
+                **text = "Draw! Click to restart".to_string();
             }
         } else if !board.has_valid_moves(current_player.0) {
             **text = format!("{:?} has no valid moves. Pass turn.", current_player.0);
@@ -265,10 +265,10 @@ pub fn update_difficulty_text(
     if let Ok(ai_player) = ai_query.single() {
         if let Ok(mut text) = difficulty_query.single_mut() {
             let difficulty_name = match ai_player.difficulty {
-                AiDifficulty::Beginner => "新手",
-                AiDifficulty::Intermediate => "中级",
-                AiDifficulty::Advanced => "高级",
-                AiDifficulty::Expert => "专家",
+                AiDifficulty::Beginner => "Easy",
+                AiDifficulty::Intermediate => "Medium",
+                AiDifficulty::Advanced => "Hard",
+                AiDifficulty::Expert => "Expert",
             };
             **text = format!("AI: {difficulty_name}");
         }

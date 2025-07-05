@@ -115,16 +115,16 @@ fn handle_input(
     if let Ok(mut ai_player) = ai_query.single_mut() {
         if keyboard_input.just_pressed(KeyCode::Digit1) {
             ai_player.difficulty = AiDifficulty::Beginner;
-            println!("AI难度切换为：初级");
+            println!("AI difficulty changed to: Easy");
         } else if keyboard_input.just_pressed(KeyCode::Digit2) {
             ai_player.difficulty = AiDifficulty::Intermediate;
-            println!("AI难度切换为：中级");
+            println!("AI difficulty changed to: Medium");
         } else if keyboard_input.just_pressed(KeyCode::Digit3) {
             ai_player.difficulty = AiDifficulty::Advanced;
-            println!("AI难度切换为：高级");
+            println!("AI difficulty changed to: Hard");
         } else if keyboard_input.just_pressed(KeyCode::Digit4) {
             ai_player.difficulty = AiDifficulty::Expert;
-            println!("AI难度切换为：专家");
+            println!("AI difficulty changed to: Expert");
         }
     }
 
@@ -273,7 +273,7 @@ fn check_game_over(
 
     if let Ok(board) = board_query.single() {
         if board.is_game_over() {
-            println!("检测到游戏结束！");
+            println!("Game over detected!");
 
             // 播放游戏结束音效
             if let Some(winner) = board.get_winner() {
@@ -281,13 +281,13 @@ fn check_game_over(
                 if let Ok(ai_player) = ai_query.single() {
                     if winner == ai_player.color {
                         // AI胜利，玩家失败
-                        println!("游戏结束：AI胜利，播放失败音效");
+                        println!("Game over: AI wins, playing defeat sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
                     } else {
                         // 玩家胜利
-                        println!("游戏结束：玩家胜利，播放胜利音效");
+                        println!("Game over: Player wins, playing victory sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
@@ -295,12 +295,12 @@ fn check_game_over(
                 } else {
                     // 没有AI，根据黑棋结果判断（玩家是黑棋）
                     if winner == PlayerColor::Black {
-                        println!("游戏结束：黑棋胜利，播放胜利音效");
+                        println!("Game over: Black wins, playing victory sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
                     } else {
-                        println!("游戏结束：白棋胜利，播放失败音效");
+                        println!("Game over: White wins, playing defeat sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
@@ -308,7 +308,7 @@ fn check_game_over(
                 }
             } else {
                 // 平局，播放胜利音效（因为没有输）
-                println!("游戏结束：平局，播放胜利音效");
+                println!("Game over: Draw, playing victory sound");
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::Victory,
                 });
@@ -336,7 +336,7 @@ fn handle_game_over_input(
     let mouse_restart = mouse_input.just_pressed(MouseButton::Left);
     
     if keyboard_restart || touch_restart || mouse_restart {
-        println!("重新开始游戏");
+        println!("Restarting game");
         restart_events.write(RestartGameEvent);
     }
 }
@@ -349,7 +349,7 @@ fn restart_game(
     mut ai_query: Query<&mut AiPlayer>,
 ) {
     for _event in restart_events.read() {
-        println!("执行游戏重新开始");
+        println!("Executing game restart");
 
         // 重置棋盘
         if let Ok(mut board) = board_query.single_mut() {
