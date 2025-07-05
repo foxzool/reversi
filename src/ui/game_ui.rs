@@ -137,51 +137,62 @@ pub fn setup_game_ui(mut commands: Commands) {
                 });
         });
 
-    // 侧边信息面板
+    // 移动端适配的信息面板 - 放在顶部中央，更紧凑
     commands
         .spawn((Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(10.0),
-            top: Val::Px(10.0),
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(10.0),
+            left: Val::Percent(50.0),
+            top: Val::Px(5.0),
+            // 中心对齐
+            translate: (-50.0, 0.0).into(),
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(15.0),
+            align_items: AlignItems::Center,
+            padding: UiRect::all(Val::Px(8.0)),
+            background_color: BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+            border_radius: BorderRadius::all(Val::Px(8.0)),
             ..default()
         },))
         .with_children(|parent| {
-            // 分数显示
+            // 分数显示 - 更紧凑
             parent.spawn((
-                Text::new("Black: 2  White: 2"),
+                Text::new("●2 ○2"),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
                 ScoreText,
             ));
 
-            // AI难度显示
+            // AI难度显示 - 移动端简化显示
             parent.spawn((
-                Text::new("AI Difficulty: Intermediate (Press 1-4 to change)"),
+                Text::new("AI: 中级"),
                 TextFont {
-                    font_size: 14.0,
+                    font_size: 12.0,
                     ..default()
                 },
-                TextColor(Color::WHITE),
+                TextColor(Color::srgb(0.8, 0.8, 0.8)),
                 DifficultyText,
             ));
         });
 
-    // 底部状态信息
+    // 状态信息 - 移动端放在底部中央
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(10.0),
-            bottom: Val::Px(10.0),
+            left: Val::Percent(50.0),
+            bottom: Val::Px(5.0),
+            // 中心对齐
+            translate: (-50.0, 0.0).into(),
+            padding: UiRect::all(Val::Px(6.0)),
+            background_color: BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+            border_radius: BorderRadius::all(Val::Px(6.0)),
             ..default()
         },
         Text::new("Game in progress"),
         TextFont {
-            font_size: 14.0,
+            font_size: 12.0,
             ..default()
         },
         TextColor(Color::WHITE),
@@ -196,7 +207,7 @@ pub fn update_score_text(
     if let (Ok(mut text), Ok(board)) = (score_query.single_mut(), board_query.single()) {
         let black_count = board.count_pieces(PlayerColor::Black);
         let white_count = board.count_pieces(PlayerColor::White);
-        **text = format!("Black: {black_count}  White: {white_count}");
+        **text = format!("●{black_count} ○{white_count}");
     }
 }
 
@@ -219,9 +230,9 @@ pub fn update_game_status_text(
     if let (Ok(mut text), Ok(board)) = (status_query.single_mut(), board_query.single()) {
         if board.is_game_over() {
             if let Some(winner) = board.get_winner() {
-                **text = format!("{winner:?} wins! Press SPACE or ENTER to restart");
+                **text = format!("{winner:?} wins! Tap to restart");
             } else {
-                **text = "Draw! Press SPACE or ENTER to restart".to_string();
+                **text = "Draw! Tap to restart".to_string();
             }
         } else if !board.has_valid_moves(current_player.0) {
             **text = format!("{:?} has no valid moves. Pass turn.", current_player.0);
@@ -252,12 +263,12 @@ pub fn update_difficulty_text(
     if let Ok(ai_player) = ai_query.single() {
         if let Ok(mut text) = difficulty_query.single_mut() {
             let difficulty_name = match ai_player.difficulty {
-                AiDifficulty::Beginner => "Beginner",
-                AiDifficulty::Intermediate => "Intermediate",
-                AiDifficulty::Advanced => "Advanced",
-                AiDifficulty::Expert => "Expert",
+                AiDifficulty::Beginner => "新手",
+                AiDifficulty::Intermediate => "中级",
+                AiDifficulty::Advanced => "高级",
+                AiDifficulty::Expert => "专家",
             };
-            **text = format!("AI Difficulty: {difficulty_name} (Press 1-4 to change)");
+            **text = format!("AI: {difficulty_name}");
         }
     }
 }

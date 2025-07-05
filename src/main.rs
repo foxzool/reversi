@@ -41,7 +41,10 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Reversi".to_string(),
-                resolution: (1000.0, 800.0).into(),
+                resolution: (800.0, 800.0).into(),
+                // 移动端适配设置
+                fit_canvas_to_parent: true,
+                prevent_default_event_handling: false,
                 ..default()
             }),
             ..default()
@@ -102,6 +105,7 @@ fn handle_input(
     mut move_events: EventWriter<PlayerMoveEvent>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    touch_input: Res<Touches>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     current_player: Res<CurrentPlayer>,
@@ -124,25 +128,34 @@ fn handle_input(
         }
     }
 
-    if !mouse_input.just_pressed(MouseButton::Left) {
+    // 检查是否有输入事件（鼠标点击或触摸）
+    let input_position = if mouse_input.just_pressed(MouseButton::Left) {
+        // 鼠标输入
+        let Ok(window) = windows.single() else {
+            return;
+        };
+        window.cursor_position()
+    } else if let Some(touch) = touch_input.first_pressed_position() {
+        // 触摸输入 - 支持手机触摸
+        Some(touch)
+    } else {
+        // 没有输入事件
         return;
-    }
+    };
 
+    // 检查是否轮到玩家
     if let Ok(ai_player) = ai_query.single() {
         if ai_player.color == current_player.0 {
             return;
         }
     }
 
-    let Ok(window) = windows.single() else {
-        return;
-    };
     let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
     };
 
-    if let Some(cursor_position) = window.cursor_position() {
-        if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, cursor_position) {
+    if let Some(screen_position) = input_position {
+        if let Ok(world_position) = camera.viewport_to_world_2d(camera_transform, screen_position) {
             let col = ((world_position.x + SQUARE_SIZE * 4.0) / SQUARE_SIZE) as i32;
             let row = ((SQUARE_SIZE * 4.0 - world_position.y) / SQUARE_SIZE) as i32;
 
@@ -308,9 +321,21 @@ fn check_game_over(
 
 fn handle_game_over_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    touch_input: Res<Touches>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     mut restart_events: EventWriter<RestartGameEvent>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Space) || keyboard_input.just_pressed(KeyCode::Enter) {
+    // 键盘输入（桌面端）
+    let keyboard_restart = keyboard_input.just_pressed(KeyCode::Space) 
+        || keyboard_input.just_pressed(KeyCode::Enter);
+    
+    // 触摸输入（移动端）
+    let touch_restart = touch_input.any_just_pressed();
+    
+    // 鼠标输入（桌面端备用）
+    let mouse_restart = mouse_input.just_pressed(MouseButton::Left);
+    
+    if keyboard_restart || touch_restart || mouse_restart {
         println!("重新开始游戏");
         restart_events.write(RestartGameEvent);
     }
