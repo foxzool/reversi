@@ -139,20 +139,22 @@ pub fn setup_game_ui(mut commands: Commands) {
 
     // 移动端适配的信息面板 - 放在顶部中央，更紧凑
     commands
-        .spawn((Node {
-            position_type: PositionType::Absolute,
-            left: Val::Percent(50.0),
-            top: Val::Px(5.0),
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Px(5.0),
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(15.0),
+                align_items: AlignItems::Center,
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
             // 中心对齐
-            translate: (-50.0, 0.0).into(),
-            flex_direction: FlexDirection::Row,
-            column_gap: Val::Px(15.0),
-            align_items: AlignItems::Center,
-            padding: UiRect::all(Val::Px(8.0)),
-            background_color: BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
-            border_radius: BorderRadius::all(Val::Px(8.0)),
-            ..default()
-        },))
+            Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+            BorderRadius::all(Val::Px(8.0)),
+        ))
         .with_children(|parent| {
             // 分数显示 - 更紧凑
             parent.spawn((
@@ -183,13 +185,13 @@ pub fn setup_game_ui(mut commands: Commands) {
             position_type: PositionType::Absolute,
             left: Val::Percent(50.0),
             bottom: Val::Px(5.0),
-            // 中心对齐
-            translate: (-50.0, 0.0).into(),
             padding: UiRect::all(Val::Px(6.0)),
-            background_color: BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
-            border_radius: BorderRadius::all(Val::Px(6.0)),
             ..default()
         },
+        // 中心对齐
+        Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0)),
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        BorderRadius::all(Val::Px(6.0)),
         Text::new("Game in progress"),
         TextFont {
             font_size: 12.0,
