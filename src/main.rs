@@ -18,7 +18,7 @@ use ui::{
     handle_rules_button, manage_rules_panel, setup_board_ui, setup_game_ui, ToggleRulesEvent,
     UiState, update_current_player_text, update_difficulty_text, update_game_status_text,
     update_pieces, update_score_text, update_turn_indicator, update_valid_moves, BoardColors,
-    CurrentPlayer, SQUARE_SIZE,
+    CurrentPlayer, SQUARE_SIZE, GameUI, BoardUI, Piece, ValidMoveIndicator,
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -373,13 +373,39 @@ fn handle_game_over_input(
 
 fn restart_game(
     mut restart_events: EventReader<RestartGameEvent>,
+    mut commands: Commands,
     mut board_query: Query<&mut Board>,
     mut current_player: ResMut<CurrentPlayer>,
     mut next_state: ResMut<NextState<GameState>>,
     mut ai_query: Query<&mut AiPlayer>,
+    // 查询游戏UI实体
+    game_ui_entities: Query<Entity, With<GameUI>>,
+    board_ui_entities: Query<Entity, With<BoardUI>>,
+    piece_entities: Query<Entity, With<Piece>>,
+    valid_move_entities: Query<Entity, With<ValidMoveIndicator>>,
 ) {
     for _event in restart_events.read() {
         println!("Executing game restart");
+
+        // 清理游戏UI实体
+        for entity in game_ui_entities.iter() {
+            commands.entity(entity).despawn();
+        }
+        
+        // 清理棋盘UI实体
+        for entity in board_ui_entities.iter() {
+            commands.entity(entity).despawn();
+        }
+        
+        // 清理棋子实体
+        for entity in piece_entities.iter() {
+            commands.entity(entity).despawn();
+        }
+        
+        // 清理有效移动指示器
+        for entity in valid_move_entities.iter() {
+            commands.entity(entity).despawn();
+        }
 
         // 重置棋盘
         if let Ok(mut board) = board_query.single_mut() {
@@ -394,7 +420,7 @@ fn restart_game(
             ai_player.thinking_timer.reset();
         }
 
-        // 切换回游戏状态
+        // 切换回游戏状态（这会触发OnEnter系统重新创建UI）
         next_state.set(GameState::Playing);
     }
 }

@@ -21,6 +21,9 @@ pub struct ValidMoveIndicator {
     pub position: u8,
 }
 
+#[derive(Component)]
+pub struct BoardUI;
+
 #[derive(Resource)]
 pub struct BoardColors {
     pub board_color: bevy::prelude::Color,
@@ -71,6 +74,7 @@ pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
                 Sprite::from_color(square_color, Vec2::new(SQUARE_SIZE, SQUARE_SIZE)),
                 Transform::from_xyz(x, y, 0.0),
                 BoardSquare { position },
+                BoardUI,
             ));
         }
     }
@@ -81,11 +85,13 @@ pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
         commands.spawn((
             Sprite::from_color(colors.line_color, Vec2::new(1.5, BOARD_SIZE)),
             Transform::from_xyz(offset, 0.0, 1.0),
+            BoardUI,
         ));
 
         commands.spawn((
             Sprite::from_color(colors.line_color, Vec2::new(BOARD_SIZE, 1.5)),
             Transform::from_xyz(0.0, offset, 1.0),
+            BoardUI,
         ));
     }
 }

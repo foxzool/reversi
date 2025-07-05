@@ -40,6 +40,9 @@ pub struct RulesButton;
 #[derive(Component)]
 pub struct RulesPanel;
 
+#[derive(Component)]
+pub struct GameUI;
+
 pub fn setup_game_ui(
     mut commands: Commands,
     language_settings: Res<LanguageSettings>,
@@ -55,7 +58,7 @@ pub fn setup_game_ui(
             justify_content: JustifyContent::SpaceBetween,
             align_items: AlignItems::Center,
             ..default()
-        },))
+        }, GameUI))
         .with_children(|parent| {
             // 顶部区域 - Bill
             parent
@@ -170,6 +173,7 @@ pub fn setup_game_ui(
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
             BorderRadius::all(Val::Px(6.0)),
+            GameUI,
         ))
         .with_children(|parent| {
             // 分数显示
@@ -246,6 +250,7 @@ pub fn setup_game_ui(
         TextColor(Color::WHITE),
         GameStatusText,
         LocalizedText,
+        GameUI,
     ));
 }
 
