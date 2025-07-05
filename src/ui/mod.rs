@@ -13,3 +13,6 @@ pub struct UiState {
 
 #[derive(Event)]
 pub struct ToggleRulesEvent;
+
+#[derive(Event)]
+pub struct RestartGameEvent;

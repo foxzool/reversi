@@ -1,4 +1,4 @@
-use super::{CurrentPlayer, ToggleRulesEvent, UiState};
+use super::{CurrentPlayer, ToggleRulesEvent, UiState, RestartGameEvent};
 use crate::{
     ai::{AiDifficulty, AiPlayer},
     fonts::{FontAssets, LocalizedText, get_font_for_language},
@@ -36,6 +36,9 @@ pub struct DifficultyText;
 
 #[derive(Component)]
 pub struct RulesButton;
+
+#[derive(Component)]
+pub struct RestartButton;
 
 #[derive(Component)]
 pub struct RulesPanel;
@@ -227,6 +230,32 @@ pub fn setup_game_ui(
                     LocalizedText,
                 ));
             });
+
+            // 重新开始按钮
+            parent.spawn((
+                Button,
+                Node {
+                    padding: UiRect::all(Val::Px(4.0)),
+                    align_self: AlignSelf::Center,
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(0.8, 0.2, 0.2, 0.8)),
+                BorderColor(Color::srgb(1.0, 0.4, 0.4)),
+                BorderRadius::all(Val::Px(4.0)),
+                RestartButton,
+            ))
+            .with_children(|button| {
+                button.spawn((
+                    Text::new("↻"),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 16.0,  // 手机优化尺寸
+                        ..default()
+                    },
+                    TextColor(Color::WHITE),
+                    LocalizedText,
+                ));
+            });
         });
 
     // 游戏状态信息 - 右下角
@@ -363,9 +392,9 @@ pub fn manage_rules_panel(
     font_assets: Res<FontAssets>,
 ) {
     if ui_state.is_changed() {
-        // 移除现有的规则面板
+        // 标记现有的规则面板为删除
         for entity in rules_panel_query.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(super::ToDelete);
         }
 
         // 如果需要显示规则，创建新的面板
@@ -462,4 +491,15 @@ fn spawn_rules_panel(
                 ));
             });
         });
+}
+
+pub fn handle_restart_button(
+    interaction_query: Query<&Interaction, (Changed<Interaction>, With<RestartButton>)>,
+    mut restart_events: EventWriter<RestartGameEvent>,
+) {
+    for interaction in interaction_query.iter() {
+        if *interaction == Interaction::Pressed {
+            restart_events.write(RestartGameEvent);
+        }
+    }
 }

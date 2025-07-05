@@ -24,6 +24,9 @@ pub struct ValidMoveIndicator {
 #[derive(Component)]
 pub struct BoardUI;
 
+#[derive(Component)]
+pub struct ToDelete;
+
 #[derive(Resource)]
 pub struct BoardColors {
     pub board_color: bevy::prelude::Color,
@@ -105,8 +108,9 @@ pub fn update_pieces(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     if let Ok(board) = board_query.single() {
+        // 标记旧棋子为删除，而不是直接删除
         for entity in piece_query.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(ToDelete);
         }
 
         for position in 0..64 {
@@ -141,8 +145,9 @@ pub fn update_valid_moves(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // 标记旧的有效移动指示器为删除
     for entity in valid_move_query.iter() {
-        commands.entity(entity).despawn();
+        commands.entity(entity).insert(ToDelete);
     }
 
     if let Ok(board) = board_query.single() {
@@ -167,3 +172,14 @@ pub fn update_valid_moves(
 
 #[derive(Resource)]
 pub struct CurrentPlayer(pub PlayerColor);
+
+pub fn cleanup_marked_entities(
+    mut commands: Commands,
+    marked_entities: Query<Entity, With<ToDelete>>,
+) {
+    for entity in marked_entities.iter() {
+        if let Ok(mut entity_commands) = commands.get_entity(entity) {
+            entity_commands.despawn();
+        }
+    }
+}

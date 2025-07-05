@@ -14,11 +14,13 @@ use bevy::prelude::*;
 use fonts::{load_font_assets, update_chinese_text_fonts, FontAssets, LocalizedText};
 use game::{Board, Move, PlayerColor};
 use localization::{ChangeLanguageEvent, Language, LanguageSettings};
+use reversi::systems::GameSystemSet;
 use ui::{
-    handle_rules_button, manage_rules_panel, setup_board_ui, setup_game_ui, ToggleRulesEvent,
+    handle_rules_button, handle_restart_button, manage_rules_panel, setup_board_ui, setup_game_ui, ToggleRulesEvent,
     UiState, update_current_player_text, update_difficulty_text, update_game_status_text,
     update_pieces, update_score_text, update_turn_indicator, update_valid_moves, BoardColors,
-    CurrentPlayer, SQUARE_SIZE, GameUI, BoardUI, Piece, ValidMoveIndicator,
+    CurrentPlayer, SQUARE_SIZE, GameUI, BoardUI, Piece, ValidMoveIndicator, RestartGameEvent,
+    cleanup_marked_entities, ToDelete,
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -27,7 +29,9 @@ pub enum GameState {
     LanguageSelection,
     Playing,
     GameOver,
+    Restarting,
 }
+
 
 #[derive(Event)]
 pub struct PlayerMoveEvent {
@@ -39,8 +43,6 @@ pub struct AiMoveEvent {
     pub ai_move: Move,
 }
 
-#[derive(Event)]
-pub struct RestartGameEvent;
 
 fn main() {
     App::new()
@@ -67,52 +69,94 @@ fn main() {
         .init_resource::<UiState>()
         .init_resource::<LanguageSettings>()
         .init_resource::<FontAssets>()
+        .init_resource::<RestartTimer>()
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
         .add_systems(
             Startup,
             (load_audio_assets, load_font_assets, setup_camera),
         )
+        // 语言选择状态系统
         .add_systems(
             Update,
-            setup_language_selection_ui_when_ready.run_if(in_state(GameState::LanguageSelection)),
+            (
+                setup_language_selection_ui_when_ready,
+                handle_language_selection,
+            )
+                .run_if(in_state(GameState::LanguageSelection)),
         )
         .add_systems(
             OnEnter(GameState::Playing),
             (setup_board_ui, setup_game_ui, setup_game, update_pieces),
         )
+        // 游戏进行状态系统
         .add_systems(
             Update,
             (
-                handle_input,
-                handle_player_move,
-                ai_system,
-                handle_ai_move,
-                update_pieces,
-                update_valid_moves,
-                update_score_text,
-                update_current_player_text,
-                update_game_status_text,
-                update_turn_indicator,
-                update_difficulty_text,
-                check_game_over,
-                handle_rules_button,
-                manage_rules_panel,
+                // 游戏核心逻辑
+                (
+                    handle_input,
+                    handle_player_move,
+                    handle_ai_move,
+                    ai_system,
+                    check_game_over,
+                )
+                    .chain()  // 确保顺序执行
+                    .in_set(GameSystemSet::Gameplay),
+                // UI更新
+                (
+                    update_pieces,
+                    update_valid_moves,
+                    update_score_text,
+                    update_current_player_text,
+                    update_game_status_text,
+                    update_turn_indicator,
+                    update_difficulty_text,
+                    handle_rules_button,
+                    handle_restart_button,
+                    manage_rules_panel,
+                )
+                    .in_set(GameSystemSet::UI),
             )
                 .run_if(in_state(GameState::Playing)),
         )
+        // 游戏结束状态系统
+        .add_systems(
+            Update,
+            handle_game_over_input
+                .run_if(in_state(GameState::GameOver)),
+        )
+        // 重新开始状态处理
+        .add_systems(
+            OnEnter(GameState::Restarting),
+            (setup_restart_timer,),
+        )
+        .add_systems(
+            Update,
+            handle_restart_state.run_if(in_state(GameState::Restarting)),
+        )
+        // 通用系统 - 在所有状态下运行
         .add_systems(
             Update,
             (
                 play_sound_system,
                 toggle_audio_system,
-                handle_game_over_input.run_if(in_state(GameState::GameOver)),
                 restart_game,
                 handle_rules_toggle,
-                handle_language_selection.run_if(in_state(GameState::LanguageSelection)),
                 handle_language_change,
                 update_chinese_text_fonts,
-            ),
+                cleanup_marked_entities,
+            )
+                .in_set(GameSystemSet::Common),
+        )
+        // 配置系统依赖关系
+        .configure_sets(
+            Update,
+            (
+                GameSystemSet::Gameplay,
+                GameSystemSet::UI,
+            )
+                .chain(),  // Gameplay先执行，然后UI
         )
         .run();
 }
@@ -383,28 +427,32 @@ fn restart_game(
     board_ui_entities: Query<Entity, With<BoardUI>>,
     piece_entities: Query<Entity, With<Piece>>,
     valid_move_entities: Query<Entity, With<ValidMoveIndicator>>,
+    // 添加资源用于重新创建UI
+    _language_settings: Res<LanguageSettings>,
+    _font_assets: Res<FontAssets>,
+    _colors: Res<BoardColors>,
 ) {
     for _event in restart_events.read() {
         println!("Executing game restart");
 
-        // 清理游戏UI实体
+        // 标记游戏UI实体为删除
         for entity in game_ui_entities.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(ToDelete);
         }
         
-        // 清理棋盘UI实体
+        // 标记棋盘UI实体为删除
         for entity in board_ui_entities.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(ToDelete);
         }
         
-        // 清理棋子实体
+        // 标记棋子实体为删除
         for entity in piece_entities.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(ToDelete);
         }
         
-        // 清理有效移动指示器
+        // 标记有效移动指示器为删除
         for entity in valid_move_entities.iter() {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(ToDelete);
         }
 
         // 重置棋盘
@@ -420,7 +468,39 @@ fn restart_game(
             ai_player.thinking_timer.reset();
         }
 
-        // 切换回游戏状态（这会触发OnEnter系统重新创建UI）
+        // 通过状态切换来重新创建UI
+        // 切换到Restarting状态，然后会自动切换回Playing
+        next_state.set(GameState::Restarting);
+    }
+}
+
+#[derive(Resource)]
+struct RestartTimer {
+    timer: Timer,
+}
+
+impl Default for RestartTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(0.1, TimerMode::Once), // 100ms延迟
+        }
+    }
+}
+
+fn setup_restart_timer(mut restart_timer: ResMut<RestartTimer>) {
+    restart_timer.timer.reset();
+    println!("Reset restart timer");
+}
+
+fn handle_restart_state(
+    mut restart_timer: ResMut<RestartTimer>,
+    mut next_state: ResMut<NextState<GameState>>,
+    time: Res<Time>,
+) {
+    restart_timer.timer.tick(time.delta());
+    
+    if restart_timer.timer.finished() {
+        println!("Restart timer finished, switching to Playing state");
         next_state.set(GameState::Playing);
     }
 }
@@ -446,7 +526,7 @@ struct LanguageButton {
 
 // 确保字体加载完成后再创建语言选择UI
 fn setup_language_selection_ui_when_ready(
-    mut commands: Commands,
+    commands: Commands,
     language_settings: Res<LanguageSettings>,
     font_assets: Res<FontAssets>,
     asset_server: Res<AssetServer>,
@@ -598,9 +678,9 @@ fn handle_language_selection(
                 language: language_button.language,
             });
             
-            // 清除语言选择UI
+            // 标记语言选择UI为删除
             for entity in ui_query.iter() {
-                commands.entity(entity).despawn();
+                commands.entity(entity).insert(ToDelete);
             }
             
             // 切换到游戏状态
