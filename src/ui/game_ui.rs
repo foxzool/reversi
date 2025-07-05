@@ -263,7 +263,9 @@ pub fn update_score_text(
         let black_count = board.count_pieces(PlayerColor::Black);
         let white_count = board.count_pieces(PlayerColor::White);
         let texts = language_settings.get_texts();
-        **text = texts.score_format.replace("{}", &black_count.to_string()).replacen("{}", &white_count.to_string(), 1);
+        **text = texts.score_format
+            .replacen("{}", &black_count.to_string(), 1)  // 只替换第一个{}
+            .replacen("{}", &white_count.to_string(), 1); // 再替换下一个{}
     }
 }
 
