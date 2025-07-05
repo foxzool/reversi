@@ -11,9 +11,10 @@ use audio::{
 use bevy::prelude::*;
 use game::{Board, Move, PlayerColor};
 use ui::{
-    setup_board_ui, setup_game_ui, update_current_player_text, update_difficulty_text,
-    update_game_status_text, update_pieces, update_score_text, update_turn_indicator,
-    update_valid_moves, BoardColors, CurrentPlayer, SQUARE_SIZE,
+    handle_rules_button, manage_rules_panel, setup_board_ui, setup_game_ui, ToggleRulesEvent,
+    UiState, update_current_player_text, update_difficulty_text, update_game_status_text,
+    update_pieces, update_score_text, update_turn_indicator, update_valid_moves, BoardColors,
+    CurrentPlayer, SQUARE_SIZE,
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -54,8 +55,10 @@ fn main() {
         .add_event::<AiMoveEvent>()
         .add_event::<PlaySoundEvent>()
         .add_event::<RestartGameEvent>()
+        .add_event::<ToggleRulesEvent>()
         .init_resource::<BoardColors>()
         .init_resource::<AudioSettings>()
+        .init_resource::<UiState>()
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
         .add_systems(
@@ -77,6 +80,8 @@ fn main() {
                 update_turn_indicator,
                 update_difficulty_text,
                 check_game_over,
+                handle_rules_button,
+                manage_rules_panel,
             )
                 .run_if(in_state(GameState::Playing)),
         )
@@ -87,6 +92,7 @@ fn main() {
                 toggle_audio_system,
                 handle_game_over_input.run_if(in_state(GameState::GameOver)),
                 restart_game,
+                handle_rules_toggle,
             ),
         )
         .run();
@@ -366,5 +372,15 @@ fn restart_game(
 
         // 切换回游戏状态
         next_state.set(GameState::Playing);
+    }
+}
+
+fn handle_rules_toggle(
+    mut rules_events: EventReader<ToggleRulesEvent>,
+    mut ui_state: ResMut<UiState>,
+) {
+    for _event in rules_events.read() {
+        ui_state.show_rules = !ui_state.show_rules;
+        println!("Rules panel toggled: {}", ui_state.show_rules);
     }
 }
