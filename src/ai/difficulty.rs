@@ -157,13 +157,13 @@ impl AiPlayer {
     /// * `color` - AI控制的棋子颜色
     ///
     /// # 返回
-    /// 配置好的AI玩家实例，包含500ms的基础思考时间
+    /// 配置好的AI玩家实例，包含1秒的基础思考时间
     pub fn new(difficulty: AiDifficulty, color: PlayerColor) -> Self {
         Self {
             difficulty,
             color,
-            // 设置500ms的基础思考时间，让AI看起来在思考
-            thinking_timer: Timer::new(Duration::from_millis(500), TimerMode::Once),
+            // 设置1秒的基础思考时间，让AI看起来在思考
+            thinking_timer: Timer::new(Duration::from_millis(1000), TimerMode::Once),
         }
     }
 }
