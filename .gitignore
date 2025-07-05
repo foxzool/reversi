@@ -4,7 +4,7 @@
 *.pdb
 
 # Cargo
-Cargo.lock
+# Note: For applications, Cargo.lock should be committed to ensure reproducible builds
 
 # IDE
 .vscode/
