@@ -52,6 +52,7 @@ pub fn setup_game_ui(
     font_assets: Res<FontAssets>,
 ) {
     let font = get_font_for_language(&language_settings, &font_assets);
+    let texts = language_settings.get_texts();
     // 创建根UI容器
     commands
         .spawn((Node {
@@ -93,7 +94,7 @@ pub fn setup_game_ui(
 
                     // Bill名称
                     top_parent.spawn((
-                        Text::new("Bill"),
+                        Text::new("Bill"), // AI玩家名称保持英文
                         TextFont {
                             font: font.clone(),
                             font_size: 20.0,
@@ -127,7 +128,7 @@ pub fn setup_game_ui(
                 .with_children(|bottom_parent| {
                     // Your turn文本
                     bottom_parent.spawn((
-                        Text::new("Your turn."),
+                        Text::new(texts.your_turn),
                         TextFont {
                             font: font.clone(),
                             font_size: 18.0,
@@ -181,7 +182,7 @@ pub fn setup_game_ui(
         .with_children(|parent| {
             // 分数显示
             parent.spawn((
-                Text::new("B:2 W:2"),
+                Text::new(texts.score_format.replacen("{}", "2", 1).replacen("{}", "2", 1)),
                 TextFont {
                     font: font.clone(),
                     font_size: 14.0,  // 手机优化尺寸
@@ -194,7 +195,7 @@ pub fn setup_game_ui(
 
             // AI难度显示
             parent.spawn((
-                Text::new("AI: Medium"),
+                Text::new(texts.ai_difficulty_format.replace("{}", texts.difficulty_medium)),
                 TextFont {
                     font: font.clone(),
                     font_size: 12.0,  // 手机优化尺寸
@@ -220,7 +221,7 @@ pub fn setup_game_ui(
             ))
             .with_children(|button| {
                 button.spawn((
-                    Text::new("?"),
+                    Text::new("?"), // 规则按钮符号保持通用
                     TextFont {
                         font: font.clone(),
                         font_size: 16.0,  // 手机优化尺寸
@@ -246,7 +247,7 @@ pub fn setup_game_ui(
             ))
             .with_children(|button| {
                 button.spawn((
-                    Text::new("↻"),
+                    Text::new("↻"), // 重新开始按钮符号保持通用
                     TextFont {
                         font: font.clone(),
                         font_size: 16.0,  // 手机优化尺寸
@@ -270,7 +271,7 @@ pub fn setup_game_ui(
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
         BorderRadius::all(Val::Px(6.0)),
-        Text::new("Game in progress"),
+        Text::new(texts.game_in_progress),
         TextFont {
             font: font.clone(),
             font_size: 12.0,  // 手机优化尺寸
