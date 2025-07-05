@@ -1,6 +1,8 @@
 mod ai;
 mod audio;
+mod fonts;
 mod game;
+mod localization;
 mod ui;
 
 use ai::{AiDifficulty, AiPlayer};
@@ -9,7 +11,9 @@ use audio::{
     SoundType,
 };
 use bevy::prelude::*;
+use fonts::{load_font_assets, update_chinese_text_fonts, FontAssets, LocalizedText};
 use game::{Board, Move, PlayerColor};
+use localization::{ChangeLanguageEvent, Language, LanguageSettings};
 use ui::{
     handle_rules_button, manage_rules_panel, setup_board_ui, setup_game_ui, ToggleRulesEvent,
     UiState, update_current_player_text, update_difficulty_text, update_game_status_text,
@@ -20,6 +24,7 @@ use ui::{
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum GameState {
     #[default]
+    LanguageSelection,
     Playing,
     GameOver,
 }
@@ -56,14 +61,25 @@ fn main() {
         .add_event::<PlaySoundEvent>()
         .add_event::<RestartGameEvent>()
         .add_event::<ToggleRulesEvent>()
+        .add_event::<ChangeLanguageEvent>()
         .init_resource::<BoardColors>()
         .init_resource::<AudioSettings>()
         .init_resource::<UiState>()
+        .init_resource::<LanguageSettings>()
+        .init_resource::<FontAssets>()
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
         .add_systems(
             Startup,
-            (setup_board_ui, setup_game_ui, setup_game, load_audio_assets),
+            (load_audio_assets, load_font_assets),
+        )
+        .add_systems(
+            Update,
+            setup_language_selection_ui_when_ready.run_if(in_state(GameState::LanguageSelection)),
+        )
+        .add_systems(
+            OnEnter(GameState::Playing),
+            (setup_board_ui, setup_game_ui, setup_game),
         )
         .add_systems(
             Update,
@@ -93,6 +109,9 @@ fn main() {
                 handle_game_over_input.run_if(in_state(GameState::GameOver)),
                 restart_game,
                 handle_rules_toggle,
+                handle_language_selection.run_if(in_state(GameState::LanguageSelection)),
+                handle_language_change,
+                update_chinese_text_fonts,
             ),
         )
         .run();
@@ -382,5 +401,193 @@ fn handle_rules_toggle(
     for _event in rules_events.read() {
         ui_state.show_rules = !ui_state.show_rules;
         println!("Rules panel toggled: {}", ui_state.show_rules);
+    }
+}
+
+// 语言选择相关组件
+#[derive(Component)]
+struct LanguageSelectionUI;
+
+#[derive(Component)]
+struct LanguageButton {
+    language: Language,
+}
+
+// 确保字体加载完成后再创建语言选择UI
+fn setup_language_selection_ui_when_ready(
+    mut commands: Commands,
+    language_settings: Res<LanguageSettings>,
+    font_assets: Res<FontAssets>,
+    asset_server: Res<AssetServer>,
+    ui_query: Query<Entity, With<LanguageSelectionUI>>,
+) {
+    // 检查是否已经创建了UI
+    if !ui_query.is_empty() {
+        return;
+    }
+    
+    // 检查中文字体是否已经加载完成
+    match asset_server.load_state(&font_assets.chinese_font) {
+        bevy::asset::LoadState::Loaded => {},
+        _ => return,
+    }
+    
+    setup_language_selection_ui(commands, language_settings, font_assets);
+}
+
+fn setup_language_selection_ui(
+    mut commands: Commands,
+    _language_settings: Res<LanguageSettings>,
+    font_assets: Res<FontAssets>,
+) {
+    // 总是使用中文字体以确保"中文"按钮能正确显示
+    let font = font_assets.chinese_font.clone();
+    // 创建2D相机
+    commands.spawn(Camera2d);
+
+    // 语言选择界面
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            LanguageSelectionUI,
+        ))
+        .with_children(|parent| {
+            // 标题
+            parent.spawn((
+                Text::new("Select Language / 选择语言"),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 32.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    margin: UiRect::bottom(Val::Px(50.0)),
+                    ..default()
+                },
+                LocalizedText,
+            ));
+
+            // 按钮容器
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(20.0),
+                    ..default()
+                })
+                .with_children(|buttons| {
+                    // English 按钮
+                    buttons
+                        .spawn((
+                            Button,
+                            Node {
+                                width: Val::Px(200.0),
+                                height: Val::Px(60.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.2, 0.2, 0.8)),
+                            BorderColor(Color::srgb(0.4, 0.4, 1.0)),
+                            BorderRadius::all(Val::Px(10.0)),
+                            LanguageButton {
+                                language: Language::English,
+                            },
+                        ))
+                        .with_children(|button| {
+                            button.spawn((
+                                Text::new("English"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 24.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                LocalizedText,
+                            ));
+                        });
+
+                    // 中文 按钮
+                    buttons
+                        .spawn((
+                            Button,
+                            Node {
+                                width: Val::Px(200.0),
+                                height: Val::Px(60.0),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgb(0.8, 0.2, 0.2)),
+                            BorderColor(Color::srgb(1.0, 0.4, 0.4)),
+                            BorderRadius::all(Val::Px(10.0)),
+                            LanguageButton {
+                                language: Language::Chinese,
+                            },
+                        ))
+                        .with_children(|button| {
+                            button.spawn((
+                                Text::new("中文"),
+                                TextFont {
+                                    font: font.clone(),
+                                    font_size: 24.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                                LocalizedText,
+                            ));
+                        });
+                });
+        });
+}
+
+fn handle_language_selection(
+    interaction_query: Query<
+        (&Interaction, &LanguageButton),
+        (Changed<Interaction>, With<LanguageButton>),
+    >,
+    mut language_events: EventWriter<ChangeLanguageEvent>,
+    mut language_settings: ResMut<LanguageSettings>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    ui_query: Query<Entity, With<LanguageSelectionUI>>,
+) {
+    for (interaction, language_button) in interaction_query.iter() {
+        if *interaction == Interaction::Pressed {
+            // 设置语言
+            language_settings.set_language(language_button.language);
+            
+            // 发送语言切换事件
+            language_events.write(ChangeLanguageEvent {
+                language: language_button.language,
+            });
+            
+            // 清除语言选择UI
+            for entity in ui_query.iter() {
+                commands.entity(entity).despawn();
+            }
+            
+            // 切换到游戏状态
+            next_state.set(GameState::Playing);
+            
+            println!("Language selected: {:?}", language_button.language);
+        }
+    }
+}
+
+fn handle_language_change(
+    mut language_events: EventReader<ChangeLanguageEvent>,
+    mut language_settings: ResMut<LanguageSettings>,
+) {
+    for event in language_events.read() {
+        language_settings.set_language(event.language);
+        println!("Language changed to: {:?}", event.language);
     }
 }

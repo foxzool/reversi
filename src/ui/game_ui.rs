@@ -1,7 +1,9 @@
 use super::{CurrentPlayer, ToggleRulesEvent, UiState};
 use crate::{
     ai::{AiDifficulty, AiPlayer},
+    fonts::{FontAssets, LocalizedText, get_font_for_language},
     game::{Board, PlayerColor},
+    localization::LanguageSettings,
 };
 use bevy::prelude::*;
 
@@ -38,7 +40,12 @@ pub struct RulesButton;
 #[derive(Component)]
 pub struct RulesPanel;
 
-pub fn setup_game_ui(mut commands: Commands) {
+pub fn setup_game_ui(
+    mut commands: Commands,
+    language_settings: Res<LanguageSettings>,
+    font_assets: Res<FontAssets>,
+) {
+    let font = get_font_for_language(&language_settings, &font_assets);
     // 创建根UI容器
     commands
         .spawn((Node {
@@ -82,6 +89,7 @@ pub fn setup_game_ui(mut commands: Commands) {
                     top_parent.spawn((
                         Text::new("Bill"),
                         TextFont {
+                            font: font.clone(),
                             font_size: 20.0,
                             ..default()
                         },
@@ -89,6 +97,7 @@ pub fn setup_game_ui(mut commands: Commands) {
                         PlayerNameText {
                             player_color: PlayerColor::White,
                         },
+                        LocalizedText,
                     ));
                 });
 
@@ -114,6 +123,7 @@ pub fn setup_game_ui(mut commands: Commands) {
                     bottom_parent.spawn((
                         Text::new("Your turn."),
                         TextFont {
+                            font: font.clone(),
                             font_size: 18.0,
                             ..default()
                         },
@@ -123,6 +133,7 @@ pub fn setup_game_ui(mut commands: Commands) {
                             ..default()
                         },
                         TurnIndicator,
+                        LocalizedText,
                     ));
 
                     // You头像
@@ -166,22 +177,26 @@ pub fn setup_game_ui(mut commands: Commands) {
             parent.spawn((
                 Text::new("B:2 W:2"),
                 TextFont {
+                    font: font.clone(),
                     font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
                 ScoreText,
+                LocalizedText,
             ));
 
             // AI难度显示 - 移动端简化显示
             parent.spawn((
                 Text::new("AI: Medium"),
                 TextFont {
+                    font: font.clone(),
                     font_size: 12.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.8, 0.8, 0.8)),
                 DifficultyText,
+                LocalizedText,
             ));
 
             // 规则按钮
@@ -200,10 +215,12 @@ pub fn setup_game_ui(mut commands: Commands) {
                 button.spawn((
                     Text::new("?"),
                     TextFont {
+                        font: font.clone(),
                         font_size: 16.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
+                    LocalizedText,
                 ));
             });
         });
@@ -223,22 +240,26 @@ pub fn setup_game_ui(mut commands: Commands) {
         BorderRadius::all(Val::Px(6.0)),
         Text::new("Game in progress"),
         TextFont {
+            font: font.clone(),
             font_size: 12.0,
             ..default()
         },
         TextColor(Color::WHITE),
         GameStatusText,
+        LocalizedText,
     ));
 }
 
 pub fn update_score_text(
     mut score_query: Query<&mut Text, With<ScoreText>>,
     board_query: Query<&Board>,
+    language_settings: Res<LanguageSettings>,
 ) {
     if let (Ok(mut text), Ok(board)) = (score_query.single_mut(), board_query.single()) {
         let black_count = board.count_pieces(PlayerColor::Black);
         let white_count = board.count_pieces(PlayerColor::White);
-        **text = format!("B:{black_count} W:{white_count}");
+        let texts = language_settings.get_texts();
+        **text = texts.score_format.replace("{}", &black_count.to_string()).replacen("{}", &white_count.to_string(), 1);
     }
 }
 
@@ -257,18 +278,27 @@ pub fn update_game_status_text(
     mut status_query: Query<&mut Text, With<GameStatusText>>,
     board_query: Query<&Board>,
     current_player: Res<CurrentPlayer>,
+    language_settings: Res<LanguageSettings>,
 ) {
     if let (Ok(mut text), Ok(board)) = (status_query.single_mut(), board_query.single()) {
+        let texts = language_settings.get_texts();
+        
         if board.is_game_over() {
             if let Some(winner) = board.get_winner() {
-                **text = format!("{winner:?} wins! Click to restart");
+                **text = format!("{} {}", 
+                    match winner {
+                        PlayerColor::Black => texts.black_wins,
+                        PlayerColor::White => texts.white_wins,
+                    },
+                    texts.click_to_restart
+                );
             } else {
-                **text = "Draw! Click to restart".to_string();
+                **text = format!("{} {}", texts.draw, texts.click_to_restart);
             }
         } else if !board.has_valid_moves(current_player.0) {
-            **text = format!("{:?} has no valid moves. Pass turn.", current_player.0);
+            **text = format!("{:?} {}", current_player.0, texts.pass_turn);
         } else {
-            **text = "Game in progress".to_string();
+            **text = texts.game_in_progress.to_string();
         }
     }
 }
@@ -276,12 +306,14 @@ pub fn update_game_status_text(
 pub fn update_turn_indicator(
     mut turn_query: Query<&mut Text, With<TurnIndicator>>,
     current_player: Res<CurrentPlayer>,
+    language_settings: Res<LanguageSettings>,
 ) {
     if current_player.is_changed() {
         if let Ok(mut text) = turn_query.single_mut() {
+            let texts = language_settings.get_texts();
             match current_player.0 {
-                PlayerColor::Black => **text = "Your turn.".to_string(),
-                PlayerColor::White => **text = "Bill's turn.".to_string(),
+                PlayerColor::Black => **text = texts.your_turn.to_string(),
+                PlayerColor::White => **text = texts.ai_turn.to_string(),
             }
         }
     }
@@ -290,16 +322,18 @@ pub fn update_turn_indicator(
 pub fn update_difficulty_text(
     mut difficulty_query: Query<&mut Text, With<DifficultyText>>,
     ai_query: Query<&AiPlayer, Changed<AiPlayer>>,
+    language_settings: Res<LanguageSettings>,
 ) {
     if let Ok(ai_player) = ai_query.single() {
         if let Ok(mut text) = difficulty_query.single_mut() {
+            let texts = language_settings.get_texts();
             let difficulty_name = match ai_player.difficulty {
-                AiDifficulty::Beginner => "Easy",
-                AiDifficulty::Intermediate => "Medium",
-                AiDifficulty::Advanced => "Hard",
-                AiDifficulty::Expert => "Expert",
+                AiDifficulty::Beginner => texts.difficulty_easy,
+                AiDifficulty::Intermediate => texts.difficulty_medium,
+                AiDifficulty::Advanced => texts.difficulty_hard,
+                AiDifficulty::Expert => texts.difficulty_expert,
             };
-            **text = format!("AI: {difficulty_name}");
+            **text = texts.ai_difficulty_format.replace("{}", difficulty_name);
         }
     }
 }
@@ -319,6 +353,8 @@ pub fn manage_rules_panel(
     mut commands: Commands,
     ui_state: Res<UiState>,
     rules_panel_query: Query<Entity, With<RulesPanel>>,
+    language_settings: Res<LanguageSettings>,
+    font_assets: Res<FontAssets>,
 ) {
     if ui_state.is_changed() {
         // 移除现有的规则面板
@@ -328,12 +364,18 @@ pub fn manage_rules_panel(
 
         // 如果需要显示规则，创建新的面板
         if ui_state.show_rules {
-            spawn_rules_panel(&mut commands);
+            spawn_rules_panel(&mut commands, &language_settings, &font_assets);
         }
     }
 }
 
-fn spawn_rules_panel(commands: &mut Commands) {
+fn spawn_rules_panel(
+    commands: &mut Commands, 
+    language_settings: &LanguageSettings,
+    font_assets: &FontAssets,
+) {
+    let texts = language_settings.get_texts();
+    let font = get_font_for_language(language_settings, font_assets);
     commands
         .spawn((
             Node {
@@ -355,8 +397,9 @@ fn spawn_rules_panel(commands: &mut Commands) {
         .with_children(|panel| {
             // 标题
             panel.spawn((
-                Text::new("Reversi Rules"),
+                Text::new(texts.rules_title),
                 TextFont {
+                    font: font.clone(),
                     font_size: 24.0,
                     ..default()
                 },
@@ -365,14 +408,14 @@ fn spawn_rules_panel(commands: &mut Commands) {
                     margin: UiRect::bottom(Val::Px(15.0)),
                     ..default()
                 },
+                LocalizedText,
             ));
 
             // 规则内容
-            let rules_text = "OBJECTIVE:\nCapture the most pieces by the end of the game.\n\nHOW TO PLAY:\n• Players alternate placing pieces\n• Black always goes first\n• Place pieces to trap opponent's pieces\n• Trapped pieces flip to your color\n• Must make a valid move if possible\n• Game ends when board is full or no moves available\n\nVALID MOVES:\n• Must trap at least one opponent piece\n• Pieces are trapped in straight lines (horizontal, vertical, diagonal)\n• All trapped pieces between your new piece and existing piece flip\n\nCONTROLS:\n• Click/tap to place pieces\n• 1-4: Change AI difficulty\n• M: Toggle sound";
-
             panel.spawn((
-                Text::new(rules_text),
+                Text::new(texts.rules_content),
                 TextFont {
+                    font: font.clone(),
                     font_size: 14.0,
                     ..default()
                 },
@@ -381,6 +424,7 @@ fn spawn_rules_panel(commands: &mut Commands) {
                     margin: UiRect::bottom(Val::Px(15.0)),
                     ..default()
                 },
+                LocalizedText,
             ));
 
             // 关闭按钮
@@ -401,12 +445,14 @@ fn spawn_rules_panel(commands: &mut Commands) {
             ))
             .with_children(|button| {
                 button.spawn((
-                    Text::new("Close"),
+                    Text::new(texts.rules_close),
                     TextFont {
+                        font: font.clone(),
                         font_size: 16.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
+                    LocalizedText,
                 ));
             });
         });
