@@ -418,10 +418,10 @@ fn handle_game_over_input(
 fn restart_game(
     mut restart_events: EventReader<RestartGameEvent>,
     mut commands: Commands,
-    mut board_query: Query<&mut Board>,
+    board_entities: Query<Entity, With<Board>>,
+    ai_entities: Query<Entity, With<AiPlayer>>,
     mut current_player: ResMut<CurrentPlayer>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut ai_query: Query<&mut AiPlayer>,
     // 查询游戏UI实体
     game_ui_entities: Query<Entity, With<GameUI>>,
     board_ui_entities: Query<Entity, With<BoardUI>>,
@@ -455,18 +455,18 @@ fn restart_game(
             commands.entity(entity).insert(ToDelete);
         }
 
-        // 重置棋盘
-        if let Ok(mut board) = board_query.single_mut() {
-            *board = Board::new();
+        // 标记Board实体为删除
+        for entity in board_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+
+        // 标记AI实体为删除  
+        for entity in ai_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
         }
 
         // 重置当前玩家为黑棋
         current_player.0 = PlayerColor::Black;
-
-        // 重置AI思考计时器
-        if let Ok(mut ai_player) = ai_query.single_mut() {
-            ai_player.thinking_timer.reset();
-        }
 
         // 通过状态切换来重新创建UI
         // 切换到Restarting状态，然后会自动切换回Playing
