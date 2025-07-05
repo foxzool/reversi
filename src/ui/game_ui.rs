@@ -154,31 +154,29 @@ pub fn setup_game_ui(
                 });
         });
 
-    // 移动端适配的信息面板 - 放在顶部中央，更紧凑
+    // 游戏信息面板 - 右上角
     commands
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Percent(50.0),
-                top: Val::Px(5.0),
-                flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(15.0),
-                align_items: AlignItems::Center,
-                padding: UiRect::all(Val::Px(8.0)),
+                right: Val::Px(10.0),
+                top: Val::Px(10.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                align_items: AlignItems::End,
+                padding: UiRect::all(Val::Px(10.0)),
                 ..default()
             },
-            // 中心对齐
-            Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0)),
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
             BorderRadius::all(Val::Px(8.0)),
         ))
         .with_children(|parent| {
-            // 分数显示 - 更紧凑
+            // 分数显示
             parent.spawn((
                 Text::new("B:2 W:2"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 14.0,
+                    font_size: 16.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
@@ -186,12 +184,12 @@ pub fn setup_game_ui(
                 LocalizedText,
             ));
 
-            // AI难度显示 - 移动端简化显示
+            // AI难度显示
             parent.spawn((
                 Text::new("AI: Medium"),
                 TextFont {
                     font: font.clone(),
-                    font_size: 12.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.8, 0.8, 0.8)),
@@ -203,12 +201,13 @@ pub fn setup_game_ui(
             parent.spawn((
                 Button,
                 Node {
-                    padding: UiRect::all(Val::Px(4.0)),
+                    padding: UiRect::all(Val::Px(6.0)),
+                    align_self: AlignSelf::Center,
                     ..default()
                 },
                 BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
                 BorderColor(Color::srgb(0.6, 0.6, 0.6)),
-                BorderRadius::all(Val::Px(4.0)),
+                BorderRadius::all(Val::Px(6.0)),
                 RulesButton,
             ))
             .with_children(|button| {
@@ -216,7 +215,7 @@ pub fn setup_game_ui(
                     Text::new("?"),
                     TextFont {
                         font: font.clone(),
-                        font_size: 16.0,
+                        font_size: 18.0,
                         ..default()
                     },
                     TextColor(Color::WHITE),
@@ -225,23 +224,21 @@ pub fn setup_game_ui(
             });
         });
 
-    // 状态信息 - 移动端放在底部中央
+    // 游戏状态信息 - 右下角
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Percent(50.0),
-            bottom: Val::Px(5.0),
-            padding: UiRect::all(Val::Px(6.0)),
+            right: Val::Px(10.0),
+            bottom: Val::Px(10.0),
+            padding: UiRect::all(Val::Px(10.0)),
             ..default()
         },
-        // 中心对齐
-        Transform::from_translation(Vec3::new(-50.0, 0.0, 0.0)),
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
-        BorderRadius::all(Val::Px(6.0)),
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+        BorderRadius::all(Val::Px(8.0)),
         Text::new("Game in progress"),
         TextFont {
             font: font.clone(),
-            font_size: 12.0,
+            font_size: 14.0,
             ..default()
         },
         TextColor(Color::WHITE),
