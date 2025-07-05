@@ -1,329 +1,335 @@
 name: Release
 
 on:
+  # Trigger this workflow when a tag is pushed in the format `v1.2.3`.
+  push:
+    tags:
+      # Pattern syntax: <https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet>.
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+  # Trigger this workflow manually via workflow dispatch.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g., v1.0.0)'
+        description: "Version number in the format `v1.2.3`"
         required: true
         type: string
-      upload_to_github:
-        description: 'Upload to GitHub releases'
-        required: true
-        type: boolean
-        default: true
-      upload_to_itch:
-        description: 'Upload to itch.io'
-        required: true
-        type: boolean
-        default: false
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: true
+
+# Configure the release workflow by editing the following values.
 env:
-  GAME_NAME: reversi
-  ITCH_USERNAME: ${{ secrets.ITCH_USERNAME }}
-  ITCH_GAME_NAME: ${{ secrets.ITCH_GAME_NAME }}
+  # The base filename of the binary produced by `cargo build`.
+  cargo_build_binary_name: reversi
+
+  # The path to the assets directory.
+  assets_path: assets
+
+  # Whether to build and package a release for a given target platform.
+  build_for_web: true
+  build_for_linux: true
+  build_for_windows: true
+  build_for_macos: true
+
+  # Whether to upload the packages produced by this workflow to a GitHub release.
+  upload_to_github: true
+
+  # The itch.io project to upload to in the format `user-name/project-name`.
+  # There will be no upload to itch.io if this is commented out.
+  upload_to_itch: foxzool/reversi
+
+  ############
+  # ADVANCED #
+  ############
+
+  # The ID of the app produced by this workflow.
+  # Applies to macOS releases.
+  # Must contain only A-Z, a-z, 0-9, hyphen, and period: <https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundleidentifier>.
+  app_id: foxzool.reversi
+
+  # The base filename of the binary in the package produced by this workflow.
+  # Applies to Windows, macOS, and Linux releases.
+  # Defaults to `cargo_build_binary_name` if commented out.
+  #app_binary_name: reversi
+
+  # The name of the `.zip` or `.dmg` file produced by this workflow.
+  # Defaults to `app_binary_name` if commented out.
+  #app_package_name: reversi
+
+  # The display name of the app produced by this workflow.
+  # Applies to macOS releases.
+  # Defaults to `app_package_name` if commented out.
+  #app_display_name: Reversi
+
+  # The short display name of the app produced by this workflow.
+  # Applies to macOS releases.
+  # Must be 15 or fewer characters: <https://developer.apple.com/documentation/bundleresources/information_property_list/cfbundlename>.
+  # Defaults to `app_display_name` if commented out.
+  #app_short_name: Reversi
+
+  # Before enabling LFS, please take a look at GitHub's documentation for costs and quota limits:
+  # <https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-storage-and-bandwidth-usage>
+  git_lfs: false
+
+  # Enabling this only helps with consecutive releases to the same tag (and takes up cache storage space).
+  # See: <https://github.com/orgs/community/discussions/27059>.
+  use_github_cache: false
+
+  # Reduce compile time.
+  RUSTFLAGS: -Dwarnings -Zshare-generics=y -Zthreads=0
 
 jobs:
-  build-native:
-    name: Build Native
+  # Forward some environment variables as outputs of this job.
+  # This is needed because the `env` context can't be used in the `if:` condition of a job:
+  # <https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability>
+  forward-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do nothing
+        run: "true"
+    outputs:
+      upload_to_itch: ${{ env.upload_to_itch }}
+
+  # Determine the version number for this workflow.
+  get-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine version number
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "${GITHUB_OUTPUT}"
+    outputs:
+      # Use the input from workflow dispatch, or fall back to the git tag.
+      version: ${{ inputs.version || steps.tag.outputs.tag }}
+
+  # Build and package a release for each platform.
+  build:
+    needs:
+      - get-version
+    env:
+      version: ${{ needs.get-version.outputs.version }}
+      # Avoid rate-limiting. See: <https://github.com/cargo-bins/cargo-binstall/issues/2045>.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - target: x86_64-pc-windows-gnu
-            os: ubuntu-latest
-            artifact_name: reversi.exe
-            release_name: reversi-windows.zip
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest
-            artifact_name: reversi
-            release_name: reversi-linux.zip
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            artifact_name: reversi
-            release_name: reversi-macos.zip
+          - platform: web
+            targets: wasm32-unknown-unknown
+            package_ext: .zip
+            runner: ubuntu-latest
 
-    runs-on: ${{ matrix.os }}
+          - platform: linux
+            targets: x86_64-unknown-linux-gnu
+            package_ext: .zip
+            runner: ubuntu-latest
+
+          - platform: windows
+            targets: x86_64-pc-windows-msvc
+            binary_ext: .exe
+            package_ext: .zip
+            runner: windows-latest
+
+          - platform: macos
+            targets: x86_64-apple-darwin aarch64-apple-darwin
+            app_suffix: .app/Contents/MacOS
+            package_ext: .dmg
+            runner: macos-latest
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      # Required to create a GitHub release: <https://docs.github.com/en/rest/releases/releases#create-a-release>.
+      contents: write
+    defaults:
+      run:
+        shell: bash
+
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: ${{ matrix.target }}
-
-      - name: Install cross-compilation tools (Windows)
-        if: matrix.target == 'x86_64-pc-windows-gnu'
+      - name: Set up environment
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-mingw-w64-x86-64
+          # Default values:
+          echo "app_binary_name=${app_binary_name:=${{ env.cargo_build_binary_name }}}" >> "${GITHUB_ENV}"
+          echo "app_package_name=${app_package_name:=${app_binary_name}}" >> "${GITHUB_ENV}"
+          echo "app_display_name=${app_display_name:=${app_package_name}}" >> "${GITHUB_ENV}"
+          echo "app_short_name=${app_short_name:=${app_display_name}}" >> "${GITHUB_ENV}"
+
+          # File paths:
+          echo "app=tmp/app/${app_package_name}"'${{ matrix.app_suffix }}' >> "${GITHUB_ENV}"
+          echo "package=${app_package_name}-"'${{ matrix.platform }}${{ matrix.package_ext }}' >> "${GITHUB_ENV}"
+
+          # macOS environment:
+          if [ '${{ matrix.platform }}' = 'macos' ]; then
+            echo 'MACOSX_DEPLOYMENT_TARGET=11.0' >> "${GITHUB_ENV}" # macOS 11.0 Big Sur is the first version to support universal binaries.
+            echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
+          fi
+
+          # Check if building for this platform is enabled.
+          echo 'is_platform_enabled=${{
+            (matrix.platform == 'web' && env.build_for_web == 'true') ||
+            (matrix.platform == 'linux' && env.build_for_linux == 'true') ||
+            (matrix.platform == 'windows' && env.build_for_windows == 'true') ||
+            (matrix.platform == 'macos' && env.build_for_macos == 'true')
+          }}' >> "${GITHUB_ENV}"
+
+      - name: Checkout repository
+        if: ${{ env.is_platform_enabled == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          lfs: ${{ env.git_lfs }}
+
+      - name: Install Rust toolchain
+        if: ${{ env.is_platform_enabled == 'true' }}
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          targets: ${{ matrix.targets }}
+
+      - name: Restore Rust cache
+        if: ${{ env.is_platform_enabled == 'true' && env.use_github_cache == 'true' }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install build dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'linux' }}
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
+      - name: Prepare output directories
+        if: ${{ env.is_platform_enabled == 'true' }}
+        run: rm -rf tmp; mkdir -p tmp/binary '${{ env.app }}'
+
+      - name: Install cargo-binstall
+        if: ${{ env.is_platform_enabled == 'true' }}
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install Bevy CLI
+        if: ${{ env.is_platform_enabled == 'true' }}
+        run: cargo binstall --locked --no-confirm --force --git='https://github.com/TheBevyFlock/bevy_cli' bevy_cli
+
+      - name: Build and add web bundle to app (Web)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'web' }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev
+          cargo binstall --locked --no-confirm --force wasm-bindgen-cli
+          cargo binstall --locked --no-confirm --force wasm-opt
+          bevy build --locked --release --features='${{ matrix.features }}' --yes web --bundle
+          mv 'target/bevy_web/web-release/${{ env.cargo_build_binary_name }}' '${{ env.app }}'
 
-      - name: Setup cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
-
-      - name: Prepare release directory
+      - name: Build and add binaries to app (non-Web)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
         run: |
-          mkdir release
-          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} release/
-          if [ -d "assets" ]; then
-            cp -r assets release/
-          fi
-
-      - name: Create archive
-        run: |
-          cd release
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            7z a ../${{ matrix.release_name }} *
+          for target in ${{ matrix.targets }}; do
+            bevy build --locked --release --target="${target}" --features='${{ matrix.features }}'
+            mv target/"${target}"/release/'${{ env.cargo_build_binary_name }}${{ matrix.binary_ext }}' tmp/binary/"${target}"'${{ matrix.binary_ext }}'
+          done
+          if [ '${{ matrix.platform }}' = 'macos' ]; then
+            lipo tmp/binary/*'${{ matrix.binary_ext }}' -create -output '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
           else
-            zip -r ../${{ matrix.release_name }} *
+            mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
           fi
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.release_name }}
-          path: ${{ matrix.release_name }}
+      - name: Add assets to app (non-Web)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
+        run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true # Ignore error if assets folder does not exist.
 
-  build-web:
-    name: Build Web
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
-
-      - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli
-
-      - name: Setup cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Build for web
+      - name: Add metadata to app (macOS)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'macos' }}
         run: |
-          cargo build --release --target wasm32-unknown-unknown --no-default-features
-          mkdir -p web-dist
-          wasm-bindgen --out-dir web-dist --web target/wasm32-unknown-unknown/release/reversi.wasm
-
-      - name: Copy assets
-        run: |
-          if [ -d "assets" ]; then
-            cp -r assets web-dist/
-          fi
-
-      - name: Generate index.html
-        run: |
-          cat > web-dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="utf-8">
-              <title>Reversi - Web Edition</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                  body {
-                      margin: 0;
-                      padding: 0;
-                      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                      font-family: 'Arial', sans-serif;
-                      display: flex;
-                      flex-direction: column;
-                      align-items: center;
-                      justify-content: center;
-                      min-height: 100vh;
-                      color: white;
-                  }
-                  
-                  #loading {
-                      text-align: center;
-                      margin: 20px;
-                  }
-                  
-                  .spinner {
-                      border: 4px solid #f3f3f3;
-                      border-top: 4px solid #3498db;
-                      border-radius: 50%;
-                      width: 40px;
-                      height: 40px;
-                      animation: spin 2s linear infinite;
-                      margin: 20px auto;
-                  }
-                  
-                  @keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                  }
-                  
-                  #gameContainer {
-                      text-align: center;
-                      max-width: 1200px;
-                      margin: 0 auto;
-                  }
-                  
-                  canvas {
-                      background: #f0f0f0;
-                      border-radius: 8px;
-                      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                      max-width: 100%;
-                      height: auto;
-                  }
-                  
-                  .info {
-                      margin: 20px 0;
-                      background: rgba(255,255,255,0.1);
-                      padding: 15px;
-                      border-radius: 8px;
-                      backdrop-filter: blur(10px);
-                  }
-                  
-                  .controls {
-                      margin: 10px 0;
-                      font-size: 14px;
-                      opacity: 0.9;
-                  }
-                  
-                  h1 {
-                      margin: 20px 0;
-                      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                  }
-                  
-                  .error {
-                      color: #ff6b6b;
-                      background: rgba(255,107,107,0.1);
-                      padding: 15px;
-                      border-radius: 8px;
-                      border: 1px solid #ff6b6b;
-                      margin: 20px;
-                  }
-              </style>
-          </head>
-          <body>
-              <div id="gameContainer">
-                  <h1>🔴⚫ Reversi - Web Edition</h1>
-                  
-                  <div id="loading">
-                      <div class="spinner"></div>
-                      <p>Loading game...</p>
-                  </div>
-                  
-                  <div class="info">
-                      <h3>How to Play</h3>
-                      <div class="controls">
-                          <p><strong>Mouse:</strong> Click to place pieces</p>
-                          <p><strong>Keyboard:</strong> 1-4 (AI difficulty) • M (toggle sound) • Space/Enter (restart when game ends)</p>
-                      </div>
-                  </div>
-              </div>
-
-              <script type="module">
-                  import init from './reversi.js';
-                  
-                  async function run() {
-                      try {
-                          await init();
-                          document.getElementById('loading').style.display = 'none';
-                          console.log('🎮 Reversi game loaded successfully!');
-                      } catch (error) {
-                          console.error('Failed to load game:', error);
-                          document.getElementById('loading').innerHTML = `
-                              <div class="error">
-                                  <h3>Failed to load game</h3>
-                                  <p>Error: ${error.message}</p>
-                                  <p>Please try refreshing the page.</p>
-                              </div>
-                          `;
-                      }
-                  }
-                  
-                  run();
-              </script>
-          </body>
-          </html>
+          cat >'${{ env.app }}/../Info.plist' <<EOF
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+                <dict>
+                    <key>CFBundleDevelopmentRegion</key>
+                    <string>en</string>
+                    <key>CFBundleDisplayName</key>
+                    <string>${{ env.app_display_name }}</string>
+                    <key>CFBundleExecutable</key>
+                    <string>${{ env.app_binary_name }}</string>
+                    <key>CFBundleIdentifier</key>
+                    <string>${{ env.app_id }}</string>
+                    <key>CFBundleName</key>
+                    <string>${{ env.app_short_name }}</string>
+                    <key>CFBundleShortVersionString</key>
+                    <string>${{ env.version }}</string>
+                    <key>CFBundleVersion</key>
+                    <string>${{ env.version }}</string>
+                    <key>CFBundleInfoDictionaryVersion</key>
+                    <string>6.0</string>
+                    <key>CFBundlePackageType</key>
+                    <string>APPL</string>
+                    <key>CFBundleSupportedPlatforms</key>
+                    <array>
+                        <string>MacOSX</string>
+                    </array>
+                </dict>
+            </plist>
           EOF
 
-      - name: Create web release archive
+      - name: Package app (non-Windows)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'windows' }}
+        working-directory: tmp/app
         run: |
-          cd web-dist
-          zip -r ../reversi-web.zip *
+          if [ '${{ matrix.platform }}' = 'macos' ]; then
+            ln -s /Applications .
+            hdiutil create -fs HFS+ -volname '${{ env.app_package_name }}' -srcfolder . '${{ env.package }}'
+          else
+            zip --recurse-paths '${{ env.package }}' '${{ env.app_package_name }}'
+          fi
 
-      - name: Upload web artifact
+      - name: Package app (Windows)
+        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'windows' }}
+        working-directory: tmp/app
+        shell: pwsh
+        run: Compress-Archive -Path '${{ env.app_package_name }}' -DestinationPath '${{ env.package }}'
+
+      - name: Upload package to workflow artifacts
+        if: ${{ env.is_platform_enabled == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: reversi-web.zip
-          path: reversi-web.zip
+          path: tmp/app/${{ env.package }}
+          name: package-${{ matrix.platform }}
+          retention-days: 1
 
-  release:
-    name: Create Release
-    runs-on: ubuntu-latest
-    needs: [build-native, build-web]
-    if: inputs.upload_to_github
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+      - name: Upload package to GitHub release
+        if: ${{ env.is_platform_enabled == 'true' && env.upload_to_github == 'true' }}
+        uses: svenstaro/upload-release-action@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: Release ${{ inputs.version }}
-          body: |
-            ## Reversi Game Release ${{ inputs.version }}
-            
-            ### Downloads
-            - **Windows**: reversi-windows.zip
-            - **Linux**: reversi-linux.zip  
-            - **macOS**: reversi-macos.zip
-            - **Web**: reversi-web.zip (for itch.io or web hosting)
-            
-            ### How to Play
-            - **Mouse**: Click to place pieces
-            - **Keyboard**: 1-4 (change AI difficulty), M (toggle sound), Space/Enter (restart)
-            
-            ### Web Version
-            Extract reversi-web.zip and upload to itch.io as an HTML game, or host on any web server.
-          files: |
-            reversi-windows.zip/*
-            reversi-linux.zip/*
-            reversi-macos.zip/*
-            reversi-web.zip/*
-          draft: false
-          prerelease: false
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tmp/app/${{ env.package }}
+          asset_name: ${{ env.package }}
+          release_name: ${{ env.version }}
+          tag: ${{ env.version }}
+          overwrite: true
 
+  # Upload all packages to itch.io.
   upload-to-itch:
-    name: Upload to itch.io
     runs-on: ubuntu-latest
-    needs: [build-web]
-    if: inputs.upload_to_itch && env.ITCH_USERNAME != '' && env.ITCH_GAME_NAME != ''
+    needs:
+      - forward-env
+      - get-version
+      - build
+    if: ${{ needs.forward-env.outputs.upload_to_itch != '' }}
+
     steps:
-      - name: Download web artifact
+      - name: Download all packages
         uses: actions/download-artifact@v4
         with:
-          name: reversi-web.zip
+          pattern: package-*
+          path: tmp
 
       - name: Install butler
         run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          curl -L -o butler.zip 'https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default'
           unzip butler.zip
           chmod +x butler
-          sudo mv butler /usr/local/bin/
+          ./butler -V
 
-      - name: Upload to itch.io
+      - name: Upload all packages to itch.io
         env:
-          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          BUTLER_API_KEY: ${{ secrets.BUTLER_CREDENTIALS }}
         run: |
-          butler push reversi-web.zip ${{ env.ITCH_USERNAME }}/${{ env.ITCH_GAME_NAME }}:web --userversion "${{ inputs.version }}"
+          for channel in $(ls tmp); do
+            ./butler push \
+              --fix-permissions \
+              --userversion='${{ needs.get-version.outputs.version }}' \
+              tmp/"${channel}"/* \
+              '${{ env.upload_to_itch }}':"${channel#package-}"
+          done

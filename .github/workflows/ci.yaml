@@ -7,191 +7,174 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  # Reduce compile time and cache size.
+  RUSTFLAGS: -Dwarnings -Zshare-generics=y -Zthreads=0
+  RUSTDOCFLAGS: -Dwarnings -Zshare-generics=y -Zthreads=0
+  # Use the same Rust toolchain across jobs so they can share a cache.
+  toolchain: nightly-2025-04-03
+
 jobs:
-  fmt:
+  # Check formatting.
+  format:
     name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: nightly
+          toolchain: ${{ env.toolchain }}
           components: rustfmt
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-  clippy:
-    name: Clippy
+  # Check documentation.
+  docs:
+    name: Docs
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.toolchain }}
+
+      - name: Restore Rust cache
+        id: cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
+
+      - name: Install build dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
+
+      - name: Check documentation
+        run: cargo doc --locked --workspace --profile ci --all-features --document-private-items --no-deps
+
+  # Run Clippy lints.
+  clippy-lints:
+    name: Clippy lints
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.toolchain }}
           components: clippy
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
-      - name: Setup cache
-        uses: Swatinem/rust-cache@v2
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-  test:
-    name: Test
+      - name: Restore Rust cache
+        id: cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install build dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
+
+      - name: Run Clippy lints
+        run: cargo clippy --locked --workspace --all-targets --profile ci --all-features
+
+  # Run Bevy lints.
+  bevy-lints:
+    name: Bevy lints
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (plus bevy_lint)
+        uses: TheBevyFlock/bevy_cli/bevy_lint@lint-v0.3.0
+
+      - name: Restore Rust cache
+        id: cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ci
+          save-if: false
+
+      - name: Install build dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
+
+      - name: Run Bevy lints
+        run: bevy_lint --locked --workspace --all-targets --profile ci --all-features
+
+  # Run tests.
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up environment
+        run: echo "RUSTFLAGS=${RUSTFLAGS:+$RUSTFLAGS }-Zcodegen-backend=cranelift" >> "${GITHUB_ENV}"
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev
-      - name: Setup cache
+          toolchain: ${{ env.toolchain }}
+          components: rustc-codegen-cranelift-preview
+
+      - name: Restore Rust cache
         uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+          cache-directories: ${{ env.LD_LIBRARY_PATH }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install build dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
+
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --locked --workspace --all-targets --profile ci --no-fail-fast
 
+  # Check that the web build compiles.
   check-web:
-    name: Check Web Build
+    name: Check web
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
+          toolchain: ${{ env.toolchain }}
           targets: wasm32-unknown-unknown
-      - name: Setup cache
-        uses: Swatinem/rust-cache@v2
-      - name: Check web build
-        run: cargo check --target wasm32-unknown-unknown --release --no-default-features
 
-  build-web:
-    name: Build Web
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
-      - name: Install wasm-bindgen-cli
-        run: cargo install wasm-bindgen-cli
-      - name: Setup cache
+      - name: Restore Rust cache
+        id: cache
         uses: Swatinem/rust-cache@v2
-      - name: Build for web
-        run: |
-          cargo build --release --target wasm32-unknown-unknown --no-default-features
-          wasm-bindgen --out-dir web-dist --web target/wasm32-unknown-unknown/release/reversi.wasm
-      - name: Copy assets
-        run: |
-          mkdir -p web-dist/assets
-          if [ -d "assets" ]; then
-            cp -r assets/* web-dist/assets/
-          fi
-      - name: Generate index.html
-        run: |
-          cat > web-dist/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="utf-8">
-              <title>Reversi - Web Edition</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                  body {
-                      margin: 0;
-                      padding: 0;
-                      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-                      font-family: 'Arial', sans-serif;
-                      display: flex;
-                      flex-direction: column;
-                      align-items: center;
-                      justify-content: center;
-                      min-height: 100vh;
-                      color: white;
-                  }
-                  #loading {
-                      text-align: center;
-                      margin: 20px;
-                  }
-                  .spinner {
-                      border: 4px solid #f3f3f3;
-                      border-top: 4px solid #3498db;
-                      border-radius: 50%;
-                      width: 40px;
-                      height: 40px;
-                      animation: spin 2s linear infinite;
-                      margin: 20px auto;
-                  }
-                  @keyframes spin {
-                      0% { transform: rotate(0deg); }
-                      100% { transform: rotate(360deg); }
-                  }
-                  canvas {
-                      background: #f0f0f0;
-                      border-radius: 8px;
-                      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-                      max-width: 100%;
-                      height: auto;
-                  }
-                  .error {
-                      color: #ff6b6b;
-                      background: rgba(255,107,107,0.1);
-                      padding: 15px;
-                      border-radius: 8px;
-                      border: 1px solid #ff6b6b;
-                      margin: 20px;
-                  }
-              </style>
-          </head>
-          <body>
-              <h1>🔴⚫ Reversi - Web Edition</h1>
-              
-              <div id="loading">
-                  <div class="spinner"></div>
-                  <p>Loading game...</p>
-              </div>
-
-              <script type="module">
-                  import init from './reversi.js';
-                  
-                  async function run() {
-                      try {
-                          await init();
-                          document.getElementById('loading').style.display = 'none';
-                          console.log('🎮 Reversi game loaded successfully!');
-                      } catch (error) {
-                          console.error('Failed to load game:', error);
-                          document.getElementById('loading').innerHTML = `
-                              <div class="error">
-                                  <h3>Failed to load game</h3>
-                                  <p>Error: ${error.message}</p>
-                                  <p>Please try refreshing the page.</p>
-                              </div>
-                          `;
-                      }
-                  }
-                  
-                  run();
-              </script>
-          </body>
-          </html>
-          EOF
-      - name: Upload web build artifact
-        uses: actions/upload-artifact@v4
         with:
-          name: reversi-web
-          path: web-dist/
+          shared-key: web-ci
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install build dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
+
+      - name: Check web
+        run: cargo check --config 'profile.web.inherits="dev"' --profile ci --no-default-features --features dev --target wasm32-unknown-unknown
