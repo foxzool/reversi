@@ -14,7 +14,7 @@ use bevy::prelude::*;
 use fonts::{load_font_assets, update_chinese_text_fonts, FontAssets, LocalizedText};
 use game::{Board, Move, PlayerColor};
 use localization::{ChangeLanguageEvent, Language, LanguageSettings};
-use reversi::systems::GameSystemSet;
+use reversi::systems::GameSystems;
 use ui::{
     cleanup_marked_entities, handle_restart_button, handle_rules_button, manage_rules_panel,
     setup_board_ui, setup_game_ui, update_current_player_text, update_difficulty_text,
@@ -97,7 +97,7 @@ fn main() {
                     check_game_over,
                 )
                     .chain() // 确保顺序执行
-                    .in_set(GameSystemSet::Gameplay),
+                    .in_set(GameSystems::Gameplay),
                 // UI更新
                 (
                     update_pieces,
@@ -111,7 +111,7 @@ fn main() {
                     handle_restart_button,
                     manage_rules_panel,
                 )
-                    .in_set(GameSystemSet::UI),
+                    .in_set(GameSystems::UI),
             )
                 .run_if(in_state(GameState::Playing)),
         )
@@ -138,12 +138,12 @@ fn main() {
                 update_chinese_text_fonts,
                 cleanup_marked_entities,
             )
-                .in_set(GameSystemSet::Common),
+                .in_set(GameSystems::Common),
         )
         // 配置系统依赖关系
         .configure_sets(
             Update,
-            (GameSystemSet::Gameplay, GameSystemSet::UI).chain(), // Gameplay先执行，然后UI
+            (GameSystems::Gameplay, GameSystems::UI).chain(), // Gameplay先执行，然后UI
         )
         .run();
 }
