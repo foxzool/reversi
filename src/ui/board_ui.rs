@@ -125,6 +125,7 @@ pub fn update_pieces(
                     MeshMaterial2d(materials.add(ColorMaterial::from(piece_color))),
                     Transform::from_xyz(x, y, 2.0),
                     Piece { color, position },
+                    BoardUI,
                 ));
             }
         }

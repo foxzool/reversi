@@ -79,7 +79,7 @@ fn main() {
         )
         .add_systems(
             OnEnter(GameState::Playing),
-            (setup_board_ui, setup_game_ui, setup_game),
+            (setup_board_ui, setup_game_ui, setup_game, update_pieces),
         )
         .add_systems(
             Update,
