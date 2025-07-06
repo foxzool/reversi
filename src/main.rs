@@ -17,7 +17,7 @@ use localization::{ChangeLanguageEvent, Language, LanguageSettings};
 use reversi::systems::GameSystems;
 use ui::{
     cleanup_marked_entities, handle_restart_button, handle_rules_button, manage_rules_panel,
-    setup_board_ui, setup_game_ui, update_current_player_text, update_difficulty_text,
+    setup_board_ui, setup_game_ui, update_ai_thinking_indicator, update_current_player_text, update_difficulty_text,
     update_game_status_text, update_pieces, update_score_text, update_turn_indicator,
     update_valid_moves, BackToDifficultyButton, BoardColors, BoardUI, ButtonColors, CurrentPlayer, GameUI, Piece, RestartGameEvent,
     RulesPanel, ToDelete, ToggleRulesEvent, UiState, ValidMoveIndicator, SQUARE_SIZE,
@@ -145,6 +145,7 @@ fn main() {
                     update_game_status_text,
                     update_turn_indicator,
                     update_difficulty_text,
+                    update_ai_thinking_indicator,
                     handle_restart_button,
                     handle_back_to_difficulty_button,
                     update_button_interactions,
@@ -308,14 +309,24 @@ fn ai_system(
             return;
         }
 
+        // 如果AI正在异步思考，检查是否完成
+        if ai_player.is_thinking {
+            if let Some(result) = ai_player.check_thinking_result() {
+                if let Some(ai_move) = result {
+                    ai_move_events.write(AiMoveEvent { ai_move });
+                }
+                // 重置计时器准备下次思考
+                ai_player.thinking_timer.reset();
+            }
+            return;
+        }
+
         ai_player.thinking_timer.tick(time.delta());
 
+        // 计时器完成且没有在思考时，开始AI计算
         if ai_player.thinking_timer.finished() {
             if let Ok(board) = board_query.single() {
-                if let Some(ai_move) = ai_player.difficulty.get_ai_move(board, ai_player.color) {
-                    ai_move_events.write(AiMoveEvent { ai_move });
-                    ai_player.thinking_timer.reset();
-                }
+                ai_player.start_thinking(board);
             }
         }
     }

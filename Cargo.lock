@@ -3784,6 +3784,7 @@ name = "reversi"
 version = "0.2.0"
 dependencies = [
  "bevy",
+ "futures-lite",
  "log",
  "rand",
  "rayon",

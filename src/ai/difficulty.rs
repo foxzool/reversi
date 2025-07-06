@@ -6,6 +6,8 @@
 use super::minimax::find_best_move_with_time_limit;
 use crate::game::{Board, Move, PlayerColor};
 use bevy::prelude::*;
+use bevy::tasks::{Task, AsyncComputeTaskPool};
+use futures_lite::future;
 use rand::{random, Rng};
 // 时间相关功能：根据平台支持情况选择合适的Duration类型
 #[cfg(any(target_arch = "wasm32", target_family = "wasm"))]
@@ -147,6 +149,13 @@ pub struct AiPlayer {
     /// AI思考计时器 - 用于模拟思考时间
     /// 避免AI瞬间出招，提供更好的游戏体验
     pub thinking_timer: Timer,
+
+    /// 当前AI计算任务 - 用于异步计算
+    /// None表示没有正在进行的计算
+    pub current_task: Option<Task<Option<Move>>>,
+
+    /// AI是否正在思考
+    pub is_thinking: bool,
 }
 
 impl AiPlayer {
@@ -164,6 +173,44 @@ impl AiPlayer {
             color,
             // 设置1秒的基础思考时间，让AI看起来在思考
             thinking_timer: Timer::new(Duration::from_millis(1000), TimerMode::Once),
+            current_task: None,
+            is_thinking: false,
         }
+    }
+
+    /// 开始异步AI计算
+    ///
+    /// 在后台线程池中启动AI计算任务，避免阻塞主线程
+    pub fn start_thinking(&mut self, board: &Board) {
+        if self.current_task.is_some() || self.is_thinking {
+            return; // 已经在思考中
+        }
+
+        let board_copy = *board;
+        let difficulty = self.difficulty;
+        let player = self.color;
+        
+        let task_pool = AsyncComputeTaskPool::get();
+        let task = task_pool.spawn(async move {
+            difficulty.get_ai_move(&board_copy, player)
+        });
+        
+        self.current_task = Some(task);
+        self.is_thinking = true;
+    }
+
+    /// 检查AI计算是否完成，并返回结果
+    ///
+    /// # 返回
+    /// Some(move) 如果AI计算完成，None 如果还在计算中
+    pub fn check_thinking_result(&mut self) -> Option<Option<Move>> {
+        if let Some(task) = &mut self.current_task {
+            if let Some(result) = future::block_on(future::poll_once(task)) {
+                self.current_task = None;
+                self.is_thinking = false;
+                return Some(result);
+            }
+        }
+        None
     }
 }

@@ -9,6 +9,7 @@ readme = "README.md"
 [dependencies]
 bevy = { version = "0.16", features = ["wayland"] }
 rand = "0.8"
+futures-lite = "2.0"
 
 
 

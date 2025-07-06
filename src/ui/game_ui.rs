@@ -47,6 +47,9 @@ pub struct RulesPanel;
 #[derive(Component)]
 pub struct GameUI;
 
+#[derive(Component)]
+pub struct AiThinkingIndicator;
+
 pub fn setup_game_ui(
     mut commands: Commands,
     language_settings: Res<LanguageSettings>,
@@ -108,6 +111,23 @@ pub fn setup_game_ui(
                         PlayerNameText {
                             player_color: PlayerColor::White,
                         },
+                        LocalizedText,
+                    ));
+
+                    // AI思考状态指示器
+                    top_parent.spawn((
+                        Text::new(""),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.8, 0.8, 0.8)),
+                        Node {
+                            margin: UiRect::top(Val::Px(4.0)),
+                            ..default()
+                        },
+                        AiThinkingIndicator,
                         LocalizedText,
                     ));
                 });
@@ -517,6 +537,27 @@ pub fn handle_restart_button(
     for interaction in interaction_query.iter() {
         if *interaction == Interaction::Pressed {
             restart_events.write(RestartGameEvent);
+        }
+    }
+}
+
+pub fn update_ai_thinking_indicator(
+    mut indicator_query: Query<&mut Text, With<AiThinkingIndicator>>,
+    ai_query: Query<&AiPlayer>,
+    current_player: Res<CurrentPlayer>,
+    language_settings: Res<LanguageSettings>,
+) {
+    if let (Ok(mut text), Ok(ai_player)) = (indicator_query.single_mut(), ai_query.single()) {
+        let texts = language_settings.get_texts();
+        
+        if ai_player.color == current_player.0 {
+            if ai_player.is_thinking {
+                **text = texts.ai_turn.to_string() + "...";
+            } else {
+                **text = texts.ai_turn.to_string();
+            }
+        } else {
+            **text = "".to_string();
         }
     }
 }
