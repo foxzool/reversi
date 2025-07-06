@@ -19,8 +19,8 @@ use ui::{
     cleanup_marked_entities, handle_restart_button, handle_rules_button, manage_rules_panel,
     setup_board_ui, setup_game_ui, update_current_player_text, update_difficulty_text,
     update_game_status_text, update_pieces, update_score_text, update_turn_indicator,
-    update_valid_moves, BoardColors, BoardUI, CurrentPlayer, GameUI, Piece, RestartGameEvent,
-    ToDelete, ToggleRulesEvent, UiState, ValidMoveIndicator, SQUARE_SIZE,
+    update_valid_moves, BackToDifficultyButton, BoardColors, BoardUI, ButtonColors, CurrentPlayer, GameUI, Piece, RestartGameEvent,
+    RulesPanel, ToDelete, ToggleRulesEvent, UiState, ValidMoveIndicator, SQUARE_SIZE,
 };
 
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
@@ -91,19 +91,30 @@ fn main() {
         .add_systems(OnEnter(GameState::LoadingScreen), setup_loading_screen)
         .add_systems(
             Update,
-            check_loading_complete.run_if(in_state(GameState::LoadingScreen)),
+            (
+                check_loading_complete,
+                animate_loading_text,
+            ).run_if(in_state(GameState::LoadingScreen)),
         )
         // 语言选择状态系统
         .add_systems(OnEnter(GameState::LanguageSelection), setup_language_selection)
         .add_systems(
             Update,
-            handle_language_selection.run_if(in_state(GameState::LanguageSelection)),
+            (
+                handle_language_selection,
+                update_button_interactions,
+                update_fade_in_effects,
+            ).run_if(in_state(GameState::LanguageSelection)),
         )
         // 难度选择状态系统
         .add_systems(OnEnter(GameState::DifficultySelection), setup_difficulty_selection)
         .add_systems(
             Update,
-            handle_difficulty_selection.run_if(in_state(GameState::DifficultySelection)),
+            (
+                handle_difficulty_selection,
+                update_button_interactions,
+                update_fade_in_effects,
+            ).run_if(in_state(GameState::DifficultySelection)),
         )
         .add_systems(
             OnEnter(GameState::Playing),
@@ -134,6 +145,8 @@ fn main() {
                     update_difficulty_text,
                     handle_rules_button,
                     handle_restart_button,
+                    handle_back_to_difficulty_button,
+                    update_button_interactions,
                     manage_rules_panel,
                 )
                     .in_set(GameSystems::UI),
@@ -160,15 +173,17 @@ fn main() {
                 restart_game,
                 handle_rules_toggle,
                 handle_language_change,
+                handle_back_to_difficulty_event,
                 update_chinese_text_fonts,
-                cleanup_marked_entities,
             )
                 .in_set(GameSystems::Common),
         )
+        // 清理系统单独运行，确保在所有其他系统之后
+        .add_systems(Update, cleanup_marked_entities.after(GameSystems::Common))
         // 配置系统依赖关系
         .configure_sets(
             Update,
-            (GameSystems::Gameplay, GameSystems::UI).chain(), // Gameplay先执行，然后UI
+            (GameSystems::Gameplay, GameSystems::UI, GameSystems::Common).chain(), // 按顺序执行
         )
         .run();
 }
@@ -178,41 +193,32 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn setup_game(mut commands: Commands) {
+fn setup_game(
+    mut commands: Commands,
+    selected_difficulty: Res<SelectedDifficulty>,
+) {
     commands.spawn(Board::new());
 
+    // 使用用户选择的难度创建AI
     commands.spawn(AiPlayer::new(
-        AiDifficulty::Intermediate,
+        selected_difficulty.0,
         PlayerColor::White,
     ));
+    
+    println!("Game started with difficulty: {:?}", selected_difficulty.0);
 }
 
 fn handle_input(
     mut move_events: EventWriter<PlayerMoveEvent>,
     mouse_input: Res<ButtonInput<MouseButton>>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
+    _keyboard_input: Res<ButtonInput<KeyCode>>,
     touch_input: Res<Touches>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform)>,
     current_player: Res<CurrentPlayer>,
-    mut ai_query: Query<&mut AiPlayer>,
+    ai_query: Query<&AiPlayer>,
 ) {
-    // 处理难度切换键盘输入
-    if let Ok(mut ai_player) = ai_query.single_mut() {
-        if keyboard_input.just_pressed(KeyCode::Digit1) {
-            ai_player.difficulty = AiDifficulty::Beginner;
-            println!("AI difficulty changed to: Easy");
-        } else if keyboard_input.just_pressed(KeyCode::Digit2) {
-            ai_player.difficulty = AiDifficulty::Intermediate;
-            println!("AI difficulty changed to: Medium");
-        } else if keyboard_input.just_pressed(KeyCode::Digit3) {
-            ai_player.difficulty = AiDifficulty::Advanced;
-            println!("AI difficulty changed to: Hard");
-        } else if keyboard_input.just_pressed(KeyCode::Digit4) {
-            ai_player.difficulty = AiDifficulty::Expert;
-            println!("AI difficulty changed to: Expert");
-        }
-    }
+    // 难度现在在游戏开始前选择，不再支持游戏中切换
 
     // 检查是否有输入事件（鼠标点击或触摸）
     let input_position = if mouse_input.just_pressed(MouseButton::Left) {
@@ -532,6 +538,34 @@ fn handle_rules_toggle(
 struct LoadingScreenUI;
 
 #[derive(Component)]
+struct LoadingText {
+    timer: Timer,
+}
+
+#[derive(Component)]
+struct FadeIn {
+    timer: Timer,
+    duration: f32,
+}
+
+impl Default for LoadingText {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+        }
+    }
+}
+
+impl FadeIn {
+    fn new(duration: f32) -> Self {
+        Self {
+            timer: Timer::from_seconds(duration, TimerMode::Once),
+            duration,
+        }
+    }
+}
+
+#[derive(Component)]
 struct LanguageSelectionUI;
 
 #[derive(Component)]
@@ -547,8 +581,7 @@ struct DifficultyButton {
     difficulty: AiDifficulty,
 }
 
-#[derive(Component)]
-struct BackToDifficultyButton;
+
 
 // Loading Screen 相关函数
 fn setup_loading_screen(
@@ -581,6 +614,7 @@ fn setup_loading_screen(
                 },
                 TextColor(Color::WHITE),
                 LocalizedText,
+                LoadingText::default(),
             ));
         });
 }
@@ -634,7 +668,9 @@ fn setup_language_selection_ui(
                 align_items: AlignItems::Center,
                 ..default()
             },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.0)),
             LanguageSelectionUI,
+            FadeIn::new(0.5),
         ))
         .with_children(|parent| {
             // 标题
@@ -662,6 +698,7 @@ fn setup_language_selection_ui(
                 })
                 .with_children(|buttons| {
                     // English 按钮
+                    let english_normal = Color::srgb(0.2, 0.2, 0.8);
                     buttons
                         .spawn((
                             Button,
@@ -672,11 +709,16 @@ fn setup_language_selection_ui(
                                 align_items: AlignItems::Center,
                                 ..default()
                             },
-                            BackgroundColor(Color::srgb(0.2, 0.2, 0.8)),
+                            BackgroundColor(english_normal),
                             BorderColor(Color::srgb(0.4, 0.4, 1.0)),
                             BorderRadius::all(Val::Px(10.0)),
                             LanguageButton {
                                 language: Language::English,
+                            },
+                            ButtonColors {
+                                normal: english_normal,
+                                hovered: Color::srgb(0.3, 0.3, 0.9),
+                                pressed: Color::srgb(0.1, 0.1, 0.7),
                             },
                         ))
                         .with_children(|button| {
@@ -693,6 +735,7 @@ fn setup_language_selection_ui(
                         });
 
                     // 中文 按钮
+                    let chinese_normal = Color::srgb(0.8, 0.2, 0.2);
                     buttons
                         .spawn((
                             Button,
@@ -703,11 +746,16 @@ fn setup_language_selection_ui(
                                 align_items: AlignItems::Center,
                                 ..default()
                             },
-                            BackgroundColor(Color::srgb(0.8, 0.2, 0.2)),
+                            BackgroundColor(chinese_normal),
                             BorderColor(Color::srgb(1.0, 0.4, 0.4)),
                             BorderRadius::all(Val::Px(10.0)),
                             LanguageButton {
                                 language: Language::Chinese,
+                            },
+                            ButtonColors {
+                                normal: chinese_normal,
+                                hovered: Color::srgb(0.9, 0.3, 0.3),
+                                pressed: Color::srgb(0.7, 0.1, 0.1),
                             },
                         ))
                         .with_children(|button| {
@@ -789,7 +837,9 @@ fn setup_difficulty_selection(
                 align_items: AlignItems::Center,
                 ..default()
             },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.0)),
             DifficultySelectionUI,
+            FadeIn::new(0.5),
         ))
         .with_children(|parent| {
             // 标题
@@ -839,6 +889,11 @@ fn setup_difficulty_selection(
                                 BorderColor(Color::WHITE),
                                 BorderRadius::all(Val::Px(10.0)),
                                 DifficultyButton { difficulty },
+                                ButtonColors {
+                                    normal: color,
+                                    hovered: Color::srgba(color.to_srgba().red + 0.1, color.to_srgba().green + 0.1, color.to_srgba().blue + 0.1, 1.0),
+                                    pressed: Color::srgba(color.to_srgba().red - 0.1, color.to_srgba().green - 0.1, color.to_srgba().blue - 0.1, 1.0),
+                                },
                             ))
                             .with_children(|button| {
                                 button.spawn((
@@ -882,5 +937,130 @@ fn handle_difficulty_selection(
             
             println!("Difficulty selected: {:?}", difficulty_button.difficulty);
         }
+    }
+}
+
+// 处理返回难度选择按钮点击
+fn handle_back_to_difficulty_button(
+    interaction_query: Query<&Interaction, (Changed<Interaction>, With<BackToDifficultyButton>)>,
+    mut back_events: EventWriter<BackToDifficultyEvent>,
+) {
+    for interaction in interaction_query.iter() {
+        if *interaction == Interaction::Pressed {
+            back_events.write(BackToDifficultyEvent);
+        }
+    }
+}
+
+// 处理返回难度选择事件
+fn handle_back_to_difficulty_event(
+    mut back_events: EventReader<BackToDifficultyEvent>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    // 清理游戏相关实体
+    board_entities: Query<Entity, With<Board>>,
+    ai_entities: Query<Entity, With<AiPlayer>>,
+    game_ui_entities: Query<Entity, With<GameUI>>,
+    board_ui_entities: Query<Entity, With<BoardUI>>,
+    piece_entities: Query<Entity, With<Piece>>,
+    valid_move_entities: Query<Entity, With<ValidMoveIndicator>>,
+    rules_panel_entities: Query<Entity, With<RulesPanel>>,
+    mut current_player: ResMut<CurrentPlayer>,
+    mut ui_state: ResMut<UiState>,
+) {
+    for _event in back_events.read() {
+        println!("Returning to difficulty selection");
+        
+        // 标记游戏相关实体为删除
+        // 重要：按照依赖关系顺序删除，先删除子实体，再删除父实体
+        
+        // 首先删除规则面板（如果打开的话）
+        for entity in rules_panel_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        
+        // 删除棋子实体
+        let piece_count = piece_entities.iter().count();
+        for entity in piece_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        println!("清理了 {} 个棋子实体", piece_count);
+        
+        // 删除有效移动指示器
+        for entity in valid_move_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        
+        // 删除UI实体（包含子文本实体）
+        let game_ui_count = game_ui_entities.iter().count();
+        for entity in game_ui_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        println!("清理了 {} 个游戏UI实体", game_ui_count);
+        
+        let board_ui_count = board_ui_entities.iter().count();
+        for entity in board_ui_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        println!("清理了 {} 个棋盘UI实体", board_ui_count);
+        
+        // 最后删除游戏逻辑实体
+        for entity in board_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        
+        for entity in ai_entities.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
+        
+        // 重置游戏状态
+        current_player.0 = PlayerColor::Black;
+        ui_state.show_rules = false; // 重置规则面板状态
+        
+        // 切换到难度选择状态
+        next_state.set(GameState::DifficultySelection);
+    }
+}
+
+// 通用按钮交互效果
+fn update_button_interactions(
+    mut button_query: Query<(&Interaction, &mut BackgroundColor, &ButtonColors), (Changed<Interaction>, With<Button>)>,
+) {
+    for (interaction, mut background_color, button_colors) in button_query.iter_mut() {
+        *background_color = match *interaction {
+            Interaction::Pressed => button_colors.pressed.into(),
+            Interaction::Hovered => button_colors.hovered.into(),
+            Interaction::None => button_colors.normal.into(),
+        };
+    }
+}
+
+// 加载文本动画
+fn animate_loading_text(
+    mut loading_query: Query<(&mut LoadingText, &mut TextColor)>,
+    time: Res<Time>,
+) {
+    for (mut loading_text, mut text_color) in loading_query.iter_mut() {
+        loading_text.timer.tick(time.delta());
+        
+        // 计算脉冲效果的透明度
+        let alpha = (loading_text.timer.elapsed_secs() * 3.14159).sin() * 0.3 + 0.7;
+        text_color.0 = Color::srgba(1.0, 1.0, 1.0, alpha);
+    }
+}
+
+// 淡入效果更新
+fn update_fade_in_effects(
+    mut fade_query: Query<(&mut FadeIn, &mut BackgroundColor)>,
+    time: Res<Time>,
+) {
+    for (mut fade_in, mut background_color) in fade_query.iter_mut() {
+        fade_in.timer.tick(time.delta());
+        
+        let progress = fade_in.timer.elapsed_secs() / fade_in.duration;
+        let alpha = progress.min(1.0);
+        
+        // 透明背景渐现效果
+        background_color.0 = Color::srgba(0.0, 0.0, 0.0, alpha * 0.3);
     }
 }

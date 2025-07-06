@@ -5,6 +5,7 @@ use crate::{
     game::{Board, PlayerColor},
     localization::LanguageSettings,
 };
+use super::ButtonColors;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -164,6 +165,42 @@ pub fn setup_game_ui(
                 });
         });
 
+    // 返回按钮 - 左上角
+    let back_normal = Color::srgba(0.2, 0.2, 0.2, 0.8);
+    commands
+        .spawn((
+            Button,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(8.0),
+                top: Val::Px(8.0),
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(back_normal),
+            BorderColor(Color::srgb(0.6, 0.6, 0.6)),
+            BorderRadius::all(Val::Px(6.0)),
+            super::BackToDifficultyButton,
+            ButtonColors {
+                normal: back_normal,
+                hovered: Color::srgba(0.3, 0.3, 0.3, 0.9),
+                pressed: Color::srgba(0.1, 0.1, 0.1, 0.9),
+            },
+            GameUI,
+        ))
+        .with_children(|button| {
+            button.spawn((
+                Text::new(texts.back_to_difficulty),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                LocalizedText,
+            ));
+        });
+
     // 游戏信息面板 - 右上角
     commands
         .spawn((
@@ -219,6 +256,7 @@ pub fn setup_game_ui(
             ));
 
             // 规则按钮
+            let rules_normal = Color::srgba(0.2, 0.2, 0.2, 0.8);
             parent
                 .spawn((
                     Button,
@@ -227,10 +265,15 @@ pub fn setup_game_ui(
                         align_self: AlignSelf::Center,
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
+                    BackgroundColor(rules_normal),
                     BorderColor(Color::srgb(0.6, 0.6, 0.6)),
                     BorderRadius::all(Val::Px(4.0)),
                     RulesButton,
+                    ButtonColors {
+                        normal: rules_normal,
+                        hovered: Color::srgba(0.3, 0.3, 0.3, 0.9),
+                        pressed: Color::srgba(0.1, 0.1, 0.1, 0.9),
+                    },
                 ))
                 .with_children(|button| {
                     button.spawn((
@@ -245,32 +288,6 @@ pub fn setup_game_ui(
                     ));
                 });
 
-            // 重新开始按钮
-            parent
-                .spawn((
-                    Button,
-                    Node {
-                        padding: UiRect::all(Val::Px(4.0)),
-                        align_self: AlignSelf::Center,
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(0.8, 0.2, 0.2, 0.8)),
-                    BorderColor(Color::srgb(1.0, 0.4, 0.4)),
-                    BorderRadius::all(Val::Px(4.0)),
-                    RestartButton,
-                ))
-                .with_children(|button| {
-                    button.spawn((
-                        Text::new("↻"), // 重新开始按钮符号保持通用
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0, // 手机优化尺寸
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                        LocalizedText,
-                    ));
-                });
         });
 
     // 游戏状态信息 - 右下角
@@ -480,6 +497,7 @@ fn spawn_rules_panel(
             ));
 
             // 关闭按钮
+            let close_normal = Color::srgb(0.3, 0.3, 0.3);
             panel
                 .spawn((
                     Button,
@@ -491,10 +509,15 @@ fn spawn_rules_panel(
                         align_self: AlignSelf::Center,
                         ..default()
                     },
-                    BackgroundColor(Color::srgb(0.3, 0.3, 0.3)),
+                    BackgroundColor(close_normal),
                     BorderColor(Color::srgb(0.6, 0.6, 0.6)),
                     BorderRadius::all(Val::Px(5.0)),
                     RulesButton, // 复用按钮组件来关闭
+                    ButtonColors {
+                        normal: close_normal,
+                        hovered: Color::srgb(0.4, 0.4, 0.4),
+                        pressed: Color::srgb(0.2, 0.2, 0.2),
+                    },
                 ))
                 .with_children(|button| {
                     button.spawn((

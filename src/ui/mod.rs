@@ -16,3 +16,13 @@ pub struct ToggleRulesEvent;
 
 #[derive(Event)]
 pub struct RestartGameEvent;
+
+#[derive(Component)]
+pub struct BackToDifficultyButton;
+
+#[derive(Component)]
+pub struct ButtonColors {
+    pub normal: Color,
+    pub hovered: Color,
+    pub pressed: Color,
+}

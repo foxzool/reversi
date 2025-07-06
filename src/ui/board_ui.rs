@@ -100,14 +100,15 @@ pub fn setup_board_ui(mut commands: Commands, colors: Res<BoardColors>) {
 
 pub fn update_pieces(
     mut commands: Commands,
-    board_query: Query<&Board>,
+    board_query: Query<&Board, Changed<Board>>,
     piece_query: Query<Entity, With<Piece>>,
     colors: Res<BoardColors>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
+    // 只有当Board组件发生变化时才执行更新
     if let Ok(board) = board_query.single() {
-        // 标记旧棋子为删除，而不是直接删除
+        // 标记旧棋子为删除
         for entity in piece_query.iter() {
             commands.entity(entity).insert(ToDelete);
         }
@@ -137,34 +138,37 @@ pub fn update_pieces(
 
 pub fn update_valid_moves(
     mut commands: Commands,
-    board_query: Query<&Board>,
+    board_query: Query<&Board, Or<(Changed<Board>, Added<Board>)>>,
     current_player: Res<CurrentPlayer>,
     valid_move_query: Query<Entity, With<ValidMoveIndicator>>,
     colors: Res<BoardColors>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
-    // 标记旧的有效移动指示器为删除
-    for entity in valid_move_query.iter() {
-        commands.entity(entity).insert(ToDelete);
-    }
+    // 只有当Board或CurrentPlayer发生变化时才执行更新
+    if board_query.single().is_ok() || current_player.is_changed() {
+        // 标记旧的有效移动指示器为删除
+        for entity in valid_move_query.iter() {
+            commands.entity(entity).insert(ToDelete);
+        }
 
-    if let Ok(board) = board_query.single() {
-        let valid_moves = board.get_valid_moves_list(current_player.0);
+        if let Ok(board) = board_query.single() {
+            let valid_moves = board.get_valid_moves_list(current_player.0);
 
-        for move_option in valid_moves {
-            let (row, col) = Board::position_to_coords(move_option.position);
-            let x = (col as f32 - 3.5) * SQUARE_SIZE;
-            let y = (3.5 - row as f32) * SQUARE_SIZE;
+            for move_option in valid_moves {
+                let (row, col) = Board::position_to_coords(move_option.position);
+                let x = (col as f32 - 3.5) * SQUARE_SIZE;
+                let y = (3.5 - row as f32) * SQUARE_SIZE;
 
-            commands.spawn((
-                Mesh2d(meshes.add(Circle::new(PIECE_RADIUS * 0.6))),
-                MeshMaterial2d(materials.add(ColorMaterial::from(colors.valid_move_color))),
-                Transform::from_xyz(x, y, 1.5),
-                ValidMoveIndicator {
-                    position: move_option.position,
-                },
-            ));
+                commands.spawn((
+                    Mesh2d(meshes.add(Circle::new(PIECE_RADIUS * 0.6))),
+                    MeshMaterial2d(materials.add(ColorMaterial::from(colors.valid_move_color))),
+                    Transform::from_xyz(x, y, 1.5),
+                    ValidMoveIndicator {
+                        position: move_option.position,
+                    },
+                ));
+            }
         }
     }
 }

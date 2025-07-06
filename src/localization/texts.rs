@@ -74,7 +74,7 @@ pub const ENGLISH_TEXTS: LocalizedTexts = LocalizedTexts {
     // 规则文本
     rules_title: "Reversi Rules",
     rules_close: "Close",
-    rules_content: "OBJECTIVE:\nCapture the most pieces by the end of the game.\n\nHOW TO PLAY:\n• Players alternate placing pieces\n• Black always goes first\n• Place pieces to trap opponent's pieces\n• Trapped pieces flip to your color\n• Must make a valid move if possible\n• Game ends when board is full or no moves available\n\nVALID MOVES:\n• Must trap at least one opponent piece\n• Pieces are trapped in straight lines (horizontal, vertical, diagonal)\n• All trapped pieces between your new piece and existing piece flip\n\nCONTROLS:\n• Click/tap to place pieces\n• 1-4: Change AI difficulty\n• M: Toggle sound",
+    rules_content: "OBJECTIVE:\nCapture the most pieces by the end of the game.\n\nHOW TO PLAY:\n• Players alternate placing pieces\n• Black always goes first\n• Place pieces to trap opponent's pieces\n• Trapped pieces flip to your color\n• Must make a valid move if possible\n• Game ends when board is full or no moves available\n\nVALID MOVES:\n• Must trap at least one opponent piece\n• Pieces are trapped in straight lines (horizontal, vertical, diagonal)\n• All trapped pieces between your new piece and existing piece flip\n\nCONTROLS:\n• Click/tap to place pieces\n• M: Toggle sound",
 
     // 调试信息
     ai_difficulty_changed: "AI difficulty changed to:",
@@ -118,7 +118,7 @@ pub const CHINESE_TEXTS: LocalizedTexts = LocalizedTexts {
     // 规则文本
     rules_title: "黑白棋规则",
     rules_close: "关闭",
-    rules_content: "游戏目标：\n在游戏结束时获得最多的棋子。\n\n游戏玩法：\n• 玩家轮流放置棋子\n• 黑棋先手\n• 放置棋子以夹住对手棋子\n• 被夹住的棋子翻转为己方颜色\n• 有合法走法时必须走棋\n• 棋盘填满或无合法走法时游戏结束\n\n合法走法：\n• 必须至少夹住一个对手棋子\n• 棋子在直线上被夹住（水平、垂直、对角线）\n• 新棋子与已有棋子之间的所有对手棋子都会翻转\n\n操作控制：\n• 点击/触摸放置棋子\n• 1-4：改变AI难度\n• M：切换音效",
+    rules_content: "游戏目标：\n在游戏结束时获得最多的棋子。\n\n游戏玩法：\n• 玩家轮流放置棋子\n• 黑棋先手\n• 放置棋子以夹住对手棋子\n• 被夹住的棋子翻转为己方颜色\n• 有合法走法时必须走棋\n• 棋盘填满或无合法走法时游戏结束\n\n合法走法：\n• 必须至少夹住一个对手棋子\n• 棋子在直线上被夹住（水平、垂直、对角线）\n• 新棋子与已有棋子之间的所有对手棋子都会翻转\n\n操作控制：\n• 点击/触摸放置棋子\n• M：切换音效",
 
     // 调试信息
     ai_difficulty_changed: "AI难度已改为：",
