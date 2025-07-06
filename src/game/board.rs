@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 #[derive(Component, Clone, Copy, Debug, PartialEq)]
 pub struct Board {
@@ -34,10 +35,28 @@ impl Default for Board {
 
 impl Board {
     pub fn new() -> Self {
+        Self::new_with_variation()
+    }
+
+    pub fn new_standard() -> Self {
         Self {
             // 标准黑白棋初始位置：黑棋在(3,4)=28和(4,3)=35，白棋在(3,3)=27和(4,4)=36
             black: 0x0000000810000000, // 位置28和35
             white: 0x0000001008000000, // 位置27和36
+        }
+    }
+
+    pub fn new_with_variation() -> Self {
+        let mut rng = rand::thread_rng();
+        if rng.gen_bool(0.5) {
+            // 50%概率使用标准布局
+            Self::new_standard()
+        } else {
+            // 50%概率颜色对换：白棋在(3,4)=28和(4,3)=35，黑棋在(3,3)=27和(4,4)=36
+            Self {
+                black: 0x0000001008000000, // 位置27和36（原来是白棋位置）
+                white: 0x0000000810000000, // 位置28和35（原来是黑棋位置）
+            }
         }
     }
 
