@@ -639,16 +639,13 @@ fn check_loading_complete(
     mut commands: Commands,
 ) {
     // 检查字体是否加载完成
-    match asset_server.load_state(&font_assets.chinese_font) {
-        bevy::asset::LoadState::Loaded => {
-            // 清理Loading UI
-            for entity in loading_ui_query.iter() {
-                commands.entity(entity).insert(ToDelete);
-            }
-            // 切换到语言选择
-            next_state.set(GameState::LanguageSelection);
+    if let bevy::asset::LoadState::Loaded = asset_server.load_state(&font_assets.chinese_font) {
+        // 清理Loading UI
+        for entity in loading_ui_query.iter() {
+            commands.entity(entity).insert(ToDelete);
         }
-        _ => {}
+        // 切换到语言选择
+        next_state.set(GameState::LanguageSelection);
     }
 }
 
@@ -955,7 +952,7 @@ fn setup_difficulty_selection(
                     Button,
                     Node {
                         width: Val::Px(120.0),
-                        height: Val::Px(40.0),
+                        height: Val::Px(44.0), // 增加到44px触摸友好高度
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         margin: UiRect::top(Val::Px(30.0)),
@@ -1058,7 +1055,7 @@ fn handle_back_to_difficulty_event(
         for entity in piece_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {} 个棋子实体", piece_count);
+        println!("清理了 {piece_count} 个棋子实体");
 
         // 删除有效移动指示器
         for entity in valid_move_entities.iter() {
@@ -1070,13 +1067,13 @@ fn handle_back_to_difficulty_event(
         for entity in game_ui_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {} 个游戏UI实体", game_ui_count);
+        println!("清理了 {game_ui_count} 个游戏UI实体");
 
         let board_ui_count = board_ui_entities.iter().count();
         for entity in board_ui_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {} 个棋盘UI实体", board_ui_count);
+        println!("清理了 {board_ui_count} 个棋盘UI实体");
 
         // 最后删除游戏逻辑实体
         for entity in board_entities.iter() {
@@ -1121,7 +1118,7 @@ fn animate_loading_text(
         loading_text.timer.tick(time.delta());
 
         // 计算脉冲效果的透明度
-        let alpha = (loading_text.timer.elapsed_secs() * 3.14159).sin() * 0.3 + 0.7;
+        let alpha = (loading_text.timer.elapsed_secs() * std::f32::consts::PI).sin() * 0.3 + 0.7;
         text_color.0 = Color::srgba(1.0, 1.0, 1.0, alpha);
     }
 }

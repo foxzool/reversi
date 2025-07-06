@@ -194,7 +194,11 @@ pub fn setup_game_ui(
                 position_type: PositionType::Absolute,
                 left: Val::Px(8.0),
                 top: Val::Px(8.0),
+                width: Val::Px(44.0),  // 手机触摸友好的最小尺寸
+                height: Val::Px(44.0), // Apple推荐的44px最小触摸目标
                 padding: UiRect::all(Val::Px(8.0)),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
             BackgroundColor(back_normal),
@@ -495,7 +499,7 @@ fn spawn_rules_panel(
                     Button,
                     Node {
                         width: Val::Px(80.0),
-                        height: Val::Px(35.0),
+                        height: Val::Px(44.0), // 增加到44px触摸友好高度
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         align_self: AlignSelf::Center,
