@@ -5,8 +5,10 @@
 
 use super::minimax::find_best_move_with_time_limit;
 use crate::game::{Board, Move, PlayerColor};
-use bevy::prelude::*;
-use bevy::tasks::{Task, AsyncComputeTaskPool};
+use bevy::{
+    prelude::*,
+    tasks::{AsyncComputeTaskPool, Task},
+};
 use futures_lite::future;
 use rand::{random, Rng};
 // 时间相关功能：根据平台支持情况选择合适的Duration类型
@@ -189,12 +191,10 @@ impl AiPlayer {
         let board_copy = *board;
         let difficulty = self.difficulty;
         let player = self.color;
-        
+
         let task_pool = AsyncComputeTaskPool::get();
-        let task = task_pool.spawn(async move {
-            difficulty.get_ai_move(&board_copy, player)
-        });
-        
+        let task = task_pool.spawn(async move { difficulty.get_ai_move(&board_copy, player) });
+
         self.current_task = Some(task);
         self.is_thinking = true;
     }

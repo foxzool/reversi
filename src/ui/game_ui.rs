@@ -1,11 +1,10 @@
-use super::{CurrentPlayer, RestartGameEvent, ToggleRulesEvent, UiState};
+use super::{ButtonColors, CurrentPlayer, RestartGameEvent, ToggleRulesEvent, UiState};
 use crate::{
     ai::{AiDifficulty, AiPlayer},
     fonts::{get_font_for_language, FontAssets, LocalizedText},
     game::{Board, PlayerColor},
     localization::LanguageSettings,
 };
-use super::ButtonColors;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -82,7 +81,7 @@ pub fn setup_game_ui(
                     ..default()
                 },))
                 .with_children(|top_parent| {
-                    // Bill头像
+                    // Bill头像 - 白棋玩家
                     top_parent.spawn((
                         Node {
                             width: Val::Px(50.0),
@@ -92,8 +91,8 @@ pub fn setup_game_ui(
                             ..default()
                         },
                         BorderRadius::all(Val::Px(25.0)),
-                        BackgroundColor(Color::srgb(0.7, 0.7, 0.7)),
-                        BorderColor(Color::WHITE),
+                        BackgroundColor(Color::srgb(0.98, 0.98, 0.98)), // 白色头像
+                        BorderColor(Color::srgb(0.6, 0.6, 0.6)),        // 灰色边框以便识别
                         PlayerAvatar {
                             player_color: PlayerColor::White,
                         },
@@ -168,7 +167,7 @@ pub fn setup_game_ui(
                         LocalizedText,
                     ));
 
-                    // You头像
+                    // You头像 - 黑棋玩家
                     bottom_parent.spawn((
                         Node {
                             width: Val::Px(50.0),
@@ -177,8 +176,8 @@ pub fn setup_game_ui(
                             ..default()
                         },
                         BorderRadius::all(Val::Px(25.0)),
-                        BackgroundColor(Color::srgb(0.9, 0.7, 0.5)),
-                        BorderColor(Color::WHITE),
+                        BackgroundColor(Color::srgb(0.05, 0.05, 0.05)), // 黑色头像
+                        BorderColor(Color::WHITE),                      // 白色边框以便识别
                         PlayerAvatar {
                             player_color: PlayerColor::Black,
                         },
@@ -275,8 +274,6 @@ pub fn setup_game_ui(
                 DifficultyText,
                 LocalizedText,
             ));
-
-
         });
 
     // 游戏状态信息 - 右下角
@@ -471,15 +468,13 @@ fn spawn_rules_panel(
 
             // 规则内容容器 - 可滚动
             panel
-                .spawn((
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        flex_grow: 1.0,
-                        overflow: Overflow::clip_y(),
-                        margin: UiRect::bottom(Val::Px(10.0)),
-                        ..default()
-                    },
-                ))
+                .spawn((Node {
+                    flex_direction: FlexDirection::Column,
+                    flex_grow: 1.0,
+                    overflow: Overflow::clip_y(),
+                    margin: UiRect::bottom(Val::Px(10.0)),
+                    ..default()
+                },))
                 .with_children(|content| {
                     content.spawn((
                         Text::new(texts.rules_content),
@@ -550,7 +545,7 @@ pub fn update_ai_thinking_indicator(
 ) {
     if let (Ok(mut text), Ok(ai_player)) = (indicator_query.single_mut(), ai_query.single()) {
         let texts = language_settings.get_texts();
-        
+
         if ai_player.color == current_player.0 {
             if ai_player.is_thinking {
                 **text = texts.ai_turn.to_string() + "...";

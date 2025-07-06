@@ -37,7 +37,7 @@ pub struct LocalizedTexts {
     pub game_over_detected: &'static str,
     pub restarting_game: &'static str,
     pub executing_game_restart: &'static str,
-    
+
     // 新增界面文本
     pub loading_text: &'static str,
     pub select_difficulty: &'static str,
@@ -81,7 +81,7 @@ pub const ENGLISH_TEXTS: LocalizedTexts = LocalizedTexts {
     game_over_detected: "Game over detected!",
     restarting_game: "Restarting game",
     executing_game_restart: "Executing game restart",
-    
+
     // 新增界面文本
     loading_text: "Loading...",
     select_difficulty: "Select Difficulty",
@@ -125,7 +125,7 @@ pub const CHINESE_TEXTS: LocalizedTexts = LocalizedTexts {
     game_over_detected: "检测到游戏结束！",
     restarting_game: "重新开始游戏",
     executing_game_restart: "执行游戏重新开始",
-    
+
     // 新增界面文本
     loading_text: "加载中...",
     select_difficulty: "选择难度",
