@@ -30,11 +30,9 @@ pub fn update_chinese_text_fonts(
             match language_settings.current_language {
                 Language::Chinese => {
                     text_font.font = font_assets.chinese_font.clone();
-                    println!("Applied Chinese font to text component");
                 }
                 Language::English => {
                     text_font.font = font_assets.default_font.clone();
-                    println!("Applied English font to text component");
                 }
             }
         }

@@ -62,15 +62,14 @@ pub fn play_sound_system(
     }
 
     for event in sound_events.read() {
-        let (audio_source, sound_name) = match event.sound_type {
-            SoundType::PiecePlace => (&audio_assets.piece_place, "piece place"),
-            SoundType::PieceFlip => (&audio_assets.piece_flip, "piece flip"),
-            SoundType::Victory => (&audio_assets.victory, "victory"),
-            SoundType::Defeat => (&audio_assets.defeat, "defeat"),
-            SoundType::InvalidMove => (&audio_assets.invalid_move, "invalid move"),
+        let audio_source = match event.sound_type {
+            SoundType::PiecePlace => &audio_assets.piece_place,
+            SoundType::PieceFlip => &audio_assets.piece_flip,
+            SoundType::Victory => &audio_assets.victory,
+            SoundType::Defeat => &audio_assets.defeat,
+            SoundType::InvalidMove => &audio_assets.invalid_move,
         };
 
-        println!("Playing sound: {sound_name}");
         commands.spawn(AudioPlayer::new(audio_source.clone()));
     }
 }
@@ -81,11 +80,5 @@ pub fn toggle_audio_system(
 ) {
     if keyboard_input.just_pressed(KeyCode::KeyM) {
         audio_settings.enabled = !audio_settings.enabled;
-        let status = if audio_settings.enabled {
-            "enabled"
-        } else {
-            "disabled"
-        };
-        println!("Audio {status}");
     }
 }

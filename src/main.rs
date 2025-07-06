@@ -209,7 +209,6 @@ fn setup_game(mut commands: Commands, selected_difficulty: Res<SelectedDifficult
     // 使用用户选择的难度创建AI
     commands.spawn(AiPlayer::new(selected_difficulty.0, PlayerColor::White));
 
-    println!("Game started with difficulty: {:?}", selected_difficulty.0);
 }
 
 fn handle_input(
@@ -379,7 +378,6 @@ fn check_game_over(
 
     if let Ok(board) = board_query.single() {
         if board.is_game_over() {
-            println!("Game over detected!");
 
             // 播放游戏结束音效
             if let Some(winner) = board.get_winner() {
@@ -387,13 +385,11 @@ fn check_game_over(
                 if let Ok(ai_player) = ai_query.single() {
                     if winner == ai_player.color {
                         // AI胜利，玩家失败
-                        println!("Game over: AI wins, playing defeat sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
                     } else {
                         // 玩家胜利
-                        println!("Game over: Player wins, playing victory sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
@@ -401,12 +397,10 @@ fn check_game_over(
                 } else {
                     // 没有AI，根据黑棋结果判断（玩家是黑棋）
                     if winner == PlayerColor::Black {
-                        println!("Game over: Black wins, playing victory sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Victory,
                         });
                     } else {
-                        println!("Game over: White wins, playing defeat sound");
                         sound_events.write(PlaySoundEvent {
                             sound_type: SoundType::Defeat,
                         });
@@ -414,7 +408,6 @@ fn check_game_over(
                 }
             } else {
                 // 平局，播放胜利音效（因为没有输）
-                println!("Game over: Draw, playing victory sound");
                 sound_events.write(PlaySoundEvent {
                     sound_type: SoundType::Victory,
                 });
@@ -442,7 +435,6 @@ fn handle_game_over_input(
     let mouse_restart = mouse_input.just_pressed(MouseButton::Left);
 
     if keyboard_restart || touch_restart || mouse_restart {
-        println!("Restarting game");
         restart_events.write(RestartGameEvent);
     }
 }
@@ -465,7 +457,6 @@ fn restart_game(
     _colors: Res<BoardColors>,
 ) {
     for _event in restart_events.read() {
-        println!("Executing game restart");
 
         // 标记游戏UI实体为删除
         for entity in game_ui_entities.iter() {
@@ -521,7 +512,6 @@ impl Default for RestartTimer {
 
 fn setup_restart_timer(mut restart_timer: ResMut<RestartTimer>) {
     restart_timer.timer.reset();
-    println!("Reset restart timer");
 }
 
 fn handle_restart_state(
@@ -532,7 +522,6 @@ fn handle_restart_state(
     restart_timer.timer.tick(time.delta());
 
     if restart_timer.timer.finished() {
-        println!("Restart timer finished, switching to Playing state");
         next_state.set(GameState::Playing);
     }
 }
@@ -543,7 +532,6 @@ fn handle_rules_toggle(
 ) {
     for _event in rules_events.read() {
         ui_state.show_rules = !ui_state.show_rules;
-        println!("Rules panel toggled: {}", ui_state.show_rules);
     }
 }
 
@@ -811,8 +799,6 @@ fn handle_language_selection(
 
             // 切换到难度选择状态
             next_state.set(GameState::DifficultySelection);
-
-            println!("Language selected: {:?}", language_button.language);
         }
     }
 }
@@ -823,7 +809,6 @@ fn handle_language_change(
 ) {
     for event in language_events.read() {
         language_settings.set_language(event.language);
-        println!("Language changed to: {:?}", event.language);
     }
 }
 
@@ -1005,8 +990,6 @@ fn handle_difficulty_selection(
 
             // 切换到游戏状态
             next_state.set(GameState::Playing);
-
-            println!("Difficulty selected: {:?}", difficulty_button.difficulty);
         }
     }
 }
@@ -1040,7 +1023,6 @@ fn handle_back_to_difficulty_event(
     mut ui_state: ResMut<UiState>,
 ) {
     for _event in back_events.read() {
-        println!("Returning to difficulty selection");
 
         // 标记游戏相关实体为删除
         // 重要：按照依赖关系顺序删除，先删除子实体，再删除父实体
@@ -1051,11 +1033,9 @@ fn handle_back_to_difficulty_event(
         }
 
         // 删除棋子实体
-        let piece_count = piece_entities.iter().count();
         for entity in piece_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {piece_count} 个棋子实体");
 
         // 删除有效移动指示器
         for entity in valid_move_entities.iter() {
@@ -1063,17 +1043,13 @@ fn handle_back_to_difficulty_event(
         }
 
         // 删除UI实体（包含子文本实体）
-        let game_ui_count = game_ui_entities.iter().count();
         for entity in game_ui_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {game_ui_count} 个游戏UI实体");
 
-        let board_ui_count = board_ui_entities.iter().count();
         for entity in board_ui_entities.iter() {
             commands.entity(entity).insert(ToDelete);
         }
-        println!("清理了 {board_ui_count} 个棋盘UI实体");
 
         // 最后删除游戏逻辑实体
         for entity in board_entities.iter() {
