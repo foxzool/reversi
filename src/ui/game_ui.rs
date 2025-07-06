@@ -114,9 +114,9 @@ pub fn setup_game_ui(
                         LocalizedText,
                     ));
 
-                    // AI思考状态指示器
+                    // AI思考状态指示器 - 固定高度避免布局跳动
                     top_parent.spawn((
-                        Text::new(""),
+                        Text::new(" "), // 使用空格占位，避免完全空文本
                         TextFont {
                             font: font.clone(),
                             font_size: 16.0,
@@ -124,6 +124,7 @@ pub fn setup_game_ui(
                         },
                         TextColor(Color::srgb(0.8, 0.8, 0.8)),
                         Node {
+                            height: Val::Px(20.0), // 固定高度
                             margin: UiRect::top(Val::Px(4.0)),
                             ..default()
                         },
@@ -557,7 +558,7 @@ pub fn update_ai_thinking_indicator(
                 **text = texts.ai_turn.to_string();
             }
         } else {
-            **text = "".to_string();
+            **text = " ".to_string(); // 使用空格占位，保持布局稳定
         }
     }
 }
