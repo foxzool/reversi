@@ -11,7 +11,7 @@ use audio::{
     SoundType,
 };
 use bevy::prelude::*;
-use fonts::{load_font_assets, update_chinese_text_fonts, FontAssets, LocalizedText};
+use fonts::{get_font_for_language, load_font_assets, update_chinese_text_fonts, FontAssets, LocalizedText};
 use game::{Board, Move, PlayerColor};
 use localization::{ChangeLanguageEvent, Language, LanguageSettings};
 use reversi::systems::GameSystems;
@@ -26,7 +26,9 @@ use ui::{
 #[derive(States, Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum GameState {
     #[default]
+    LoadingScreen,
     LanguageSelection,
+    DifficultySelection,
     Playing,
     GameOver,
     Restarting,
@@ -40,6 +42,18 @@ pub struct PlayerMoveEvent {
 #[derive(Event)]
 pub struct AiMoveEvent {
     pub ai_move: Move,
+}
+
+#[derive(Event)]
+pub struct BackToDifficultyEvent;
+
+#[derive(Resource)]
+pub struct SelectedDifficulty(pub AiDifficulty);
+
+impl Default for SelectedDifficulty {
+    fn default() -> Self {
+        Self(AiDifficulty::Intermediate)
+    }
 }
 
 fn main() {
@@ -62,7 +76,9 @@ fn main() {
         .add_event::<RestartGameEvent>()
         .add_event::<ToggleRulesEvent>()
         .add_event::<ChangeLanguageEvent>()
+        .add_event::<BackToDifficultyEvent>()
         .init_resource::<BoardColors>()
+        .init_resource::<SelectedDifficulty>()
         .init_resource::<AudioSettings>()
         .init_resource::<UiState>()
         .init_resource::<LanguageSettings>()
@@ -71,14 +87,23 @@ fn main() {
         .insert_resource(CurrentPlayer(PlayerColor::Black))
         .insert_resource(ClearColor(Color::srgb(0.18, 0.58, 0.18)))
         .add_systems(Startup, (load_audio_assets, load_font_assets, setup_camera))
-        // 语言选择状态系统
+        // Loading Screen 状态系统
+        .add_systems(OnEnter(GameState::LoadingScreen), setup_loading_screen)
         .add_systems(
             Update,
-            (
-                setup_language_selection_ui_when_ready,
-                handle_language_selection,
-            )
-                .run_if(in_state(GameState::LanguageSelection)),
+            check_loading_complete.run_if(in_state(GameState::LoadingScreen)),
+        )
+        // 语言选择状态系统
+        .add_systems(OnEnter(GameState::LanguageSelection), setup_language_selection)
+        .add_systems(
+            Update,
+            handle_language_selection.run_if(in_state(GameState::LanguageSelection)),
+        )
+        // 难度选择状态系统
+        .add_systems(OnEnter(GameState::DifficultySelection), setup_difficulty_selection)
+        .add_systems(
+            Update,
+            handle_difficulty_selection.run_if(in_state(GameState::DifficultySelection)),
         )
         .add_systems(
             OnEnter(GameState::Playing),
@@ -502,7 +527,10 @@ fn handle_rules_toggle(
     }
 }
 
-// 语言选择相关组件
+// UI组件定义
+#[derive(Component)]
+struct LoadingScreenUI;
+
 #[derive(Component)]
 struct LanguageSelectionUI;
 
@@ -511,25 +539,79 @@ struct LanguageButton {
     language: Language,
 }
 
-// 确保字体加载完成后再创建语言选择UI
-fn setup_language_selection_ui_when_ready(
+#[derive(Component)]
+struct DifficultySelectionUI;
+
+#[derive(Component)]
+struct DifficultyButton {
+    difficulty: AiDifficulty,
+}
+
+#[derive(Component)]
+struct BackToDifficultyButton;
+
+// Loading Screen 相关函数
+fn setup_loading_screen(
+    mut commands: Commands,
+    font_assets: Res<FontAssets>,
+    language_settings: Res<LanguageSettings>,
+) {
+    let font = get_font_for_language(&language_settings, &font_assets);
+    let texts = language_settings.get_texts();
+    
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            LoadingScreenUI,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(texts.loading_text),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 36.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                LocalizedText,
+            ));
+        });
+}
+
+fn check_loading_complete(
+    asset_server: Res<AssetServer>,
+    font_assets: Res<FontAssets>,
+    mut next_state: ResMut<NextState<GameState>>,
+    loading_ui_query: Query<Entity, With<LoadingScreenUI>>,
+    mut commands: Commands,
+) {
+    // 检查字体是否加载完成
+    match asset_server.load_state(&font_assets.chinese_font) {
+        bevy::asset::LoadState::Loaded => {
+            // 清理Loading UI
+            for entity in loading_ui_query.iter() {
+                commands.entity(entity).insert(ToDelete);
+            }
+            // 切换到语言选择
+            next_state.set(GameState::LanguageSelection);
+        }
+        _ => {}
+    }
+}
+
+// 语言选择状态
+fn setup_language_selection(
     commands: Commands,
     language_settings: Res<LanguageSettings>,
     font_assets: Res<FontAssets>,
-    asset_server: Res<AssetServer>,
-    ui_query: Query<Entity, With<LanguageSelectionUI>>,
 ) {
-    // 检查是否已经创建了UI
-    if !ui_query.is_empty() {
-        return;
-    }
-
-    // 检查中文字体是否已经加载完成
-    match asset_server.load_state(&font_assets.chinese_font) {
-        bevy::asset::LoadState::Loaded => {}
-        _ => return,
-    }
-
     setup_language_selection_ui(commands, language_settings, font_assets);
 }
 
@@ -670,8 +752,8 @@ fn handle_language_selection(
                 commands.entity(entity).insert(ToDelete);
             }
 
-            // 切换到游戏状态
-            next_state.set(GameState::Playing);
+            // 切换到难度选择状态
+            next_state.set(GameState::DifficultySelection);
 
             println!("Language selected: {:?}", language_button.language);
         }
@@ -685,5 +767,120 @@ fn handle_language_change(
     for event in language_events.read() {
         language_settings.set_language(event.language);
         println!("Language changed to: {:?}", event.language);
+    }
+}
+
+// Difficulty Selection 相关函数
+fn setup_difficulty_selection(
+    mut commands: Commands,
+    language_settings: Res<LanguageSettings>,
+    font_assets: Res<FontAssets>,
+) {
+    let font = get_font_for_language(&language_settings, &font_assets);
+    let texts = language_settings.get_texts();
+
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            DifficultySelectionUI,
+        ))
+        .with_children(|parent| {
+            // 标题
+            parent.spawn((
+                Text::new(texts.select_difficulty),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 32.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    margin: UiRect::bottom(Val::Px(40.0)),
+                    ..default()
+                },
+                LocalizedText,
+            ));
+
+            // 难度按钮容器
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(15.0),
+                    ..default()
+                })
+                .with_children(|buttons| {
+                    // 创建四个难度按钮
+                    let difficulties = [
+                        (AiDifficulty::Beginner, texts.difficulty_easy, Color::srgb(0.2, 0.7, 0.2)),
+                        (AiDifficulty::Intermediate, texts.difficulty_medium, Color::srgb(0.2, 0.2, 0.7)),
+                        (AiDifficulty::Advanced, texts.difficulty_hard, Color::srgb(0.7, 0.5, 0.2)),
+                        (AiDifficulty::Expert, texts.difficulty_expert, Color::srgb(0.7, 0.2, 0.2)),
+                    ];
+
+                    for (difficulty, text, color) in difficulties {
+                        buttons
+                            .spawn((
+                                Button,
+                                Node {
+                                    width: Val::Px(250.0),
+                                    height: Val::Px(50.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(color),
+                                BorderColor(Color::WHITE),
+                                BorderRadius::all(Val::Px(10.0)),
+                                DifficultyButton { difficulty },
+                            ))
+                            .with_children(|button| {
+                                button.spawn((
+                                    Text::new(text),
+                                    TextFont {
+                                        font: font.clone(),
+                                        font_size: 22.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                    LocalizedText,
+                                ));
+                            });
+                    }
+                });
+        });
+}
+
+fn handle_difficulty_selection(
+    interaction_query: Query<
+        (&Interaction, &DifficultyButton),
+        (Changed<Interaction>, With<DifficultyButton>),
+    >,
+    mut selected_difficulty: ResMut<SelectedDifficulty>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut commands: Commands,
+    ui_query: Query<Entity, With<DifficultySelectionUI>>,
+) {
+    for (interaction, difficulty_button) in interaction_query.iter() {
+        if *interaction == Interaction::Pressed {
+            // 设置选中的难度
+            selected_difficulty.0 = difficulty_button.difficulty;
+            
+            // 清理难度选择UI
+            for entity in ui_query.iter() {
+                commands.entity(entity).insert(ToDelete);
+            }
+            
+            // 切换到游戏状态
+            next_state.set(GameState::Playing);
+            
+            println!("Difficulty selected: {:?}", difficulty_button.difficulty);
+        }
     }
 }
