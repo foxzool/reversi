@@ -255,38 +255,6 @@ pub fn setup_game_ui(
                 LocalizedText,
             ));
 
-            // 规则按钮
-            let rules_normal = Color::srgba(0.2, 0.2, 0.2, 0.8);
-            parent
-                .spawn((
-                    Button,
-                    Node {
-                        padding: UiRect::all(Val::Px(4.0)),
-                        align_self: AlignSelf::Center,
-                        ..default()
-                    },
-                    BackgroundColor(rules_normal),
-                    BorderColor(Color::srgb(0.6, 0.6, 0.6)),
-                    BorderRadius::all(Val::Px(4.0)),
-                    RulesButton,
-                    ButtonColors {
-                        normal: rules_normal,
-                        hovered: Color::srgba(0.3, 0.3, 0.3, 0.9),
-                        pressed: Color::srgba(0.1, 0.1, 0.1, 0.9),
-                    },
-                ))
-                .with_children(|button| {
-                    button.spawn((
-                        Text::new("?"), // 规则按钮符号保持通用
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 16.0, // 手机优化尺寸
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                        LocalizedText,
-                    ));
-                });
 
         });
 
@@ -449,15 +417,15 @@ fn spawn_rules_panel(
         .spawn((
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Percent(50.0),
-                top: Val::Percent(50.0),
-                width: Val::Px(400.0),
-                max_height: Val::Px(500.0),
+                left: Val::Px(10.0),
+                top: Val::Px(10.0),
+                right: Val::Px(10.0),
+                bottom: Val::Px(10.0),
                 flex_direction: FlexDirection::Column,
-                padding: UiRect::all(Val::Px(20.0)),
+                padding: UiRect::all(Val::Px(15.0)),
+                overflow: Overflow::clip_y(),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(-200.0, -250.0, 10.0)),
             BackgroundColor(Color::srgba(0.1, 0.1, 0.1, 0.95)),
             BorderColor(Color::srgb(0.6, 0.6, 0.6)),
             BorderRadius::all(Val::Px(10.0)),
@@ -469,32 +437,40 @@ fn spawn_rules_panel(
                 Text::new(texts.rules_title),
                 TextFont {
                     font: font.clone(),
-                    font_size: 24.0,
+                    font_size: 20.0,
                     ..default()
                 },
                 TextColor(Color::WHITE),
                 Node {
-                    margin: UiRect::bottom(Val::Px(15.0)),
+                    margin: UiRect::bottom(Val::Px(10.0)),
                     ..default()
                 },
                 LocalizedText,
             ));
 
-            // 规则内容
-            panel.spawn((
-                Text::new(texts.rules_content),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 14.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.9, 0.9, 0.9)),
-                Node {
-                    margin: UiRect::bottom(Val::Px(15.0)),
-                    ..default()
-                },
-                LocalizedText,
-            ));
+            // 规则内容容器 - 可滚动
+            panel
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        flex_grow: 1.0,
+                        overflow: Overflow::clip_y(),
+                        margin: UiRect::bottom(Val::Px(10.0)),
+                        ..default()
+                    },
+                ))
+                .with_children(|content| {
+                    content.spawn((
+                        Text::new(texts.rules_content),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 12.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                        LocalizedText,
+                    ));
+                });
 
             // 关闭按钮
             let close_normal = Color::srgb(0.3, 0.3, 0.3);
@@ -502,8 +478,8 @@ fn spawn_rules_panel(
                 .spawn((
                     Button,
                     Node {
-                        width: Val::Px(100.0),
-                        height: Val::Px(40.0),
+                        width: Val::Px(80.0),
+                        height: Val::Px(35.0),
                         justify_content: JustifyContent::Center,
                         align_items: AlignItems::Center,
                         align_self: AlignSelf::Center,
@@ -524,7 +500,7 @@ fn spawn_rules_panel(
                         Text::new(texts.rules_close),
                         TextFont {
                             font: font.clone(),
-                            font_size: 16.0,
+                            font_size: 14.0,
                             ..default()
                         },
                         TextColor(Color::WHITE),

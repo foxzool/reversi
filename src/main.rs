@@ -112,6 +112,8 @@ fn main() {
             Update,
             (
                 handle_difficulty_selection,
+                handle_rules_button,
+                manage_rules_panel,
                 update_button_interactions,
                 update_fade_in_effects,
             ).run_if(in_state(GameState::DifficultySelection)),
@@ -143,11 +145,9 @@ fn main() {
                     update_game_status_text,
                     update_turn_indicator,
                     update_difficulty_text,
-                    handle_rules_button,
                     handle_restart_button,
                     handle_back_to_difficulty_button,
                     update_button_interactions,
-                    manage_rules_panel,
                 )
                     .in_set(GameSystems::UI),
             )
@@ -908,6 +908,42 @@ fn setup_difficulty_selection(
                                 ));
                             });
                     }
+                });
+
+            // 帮助按钮
+            let help_normal = Color::srgba(0.3, 0.3, 0.3, 0.8);
+            parent
+                .spawn((
+                    Button,
+                    Node {
+                        width: Val::Px(120.0),
+                        height: Val::Px(40.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        margin: UiRect::top(Val::Px(30.0)),
+                        ..default()
+                    },
+                    BackgroundColor(help_normal),
+                    BorderColor(Color::srgb(0.6, 0.6, 0.6)),
+                    BorderRadius::all(Val::Px(8.0)),
+                    ui::RulesButton,
+                    ButtonColors {
+                        normal: help_normal,
+                        hovered: Color::srgba(0.4, 0.4, 0.4, 0.9),
+                        pressed: Color::srgba(0.2, 0.2, 0.2, 0.9),
+                    },
+                ))
+                .with_children(|button| {
+                    button.spawn((
+                        Text::new(texts.rules_title),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 16.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                        LocalizedText,
+                    ));
                 });
         });
 }
